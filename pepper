@@ -1,0 +1,289 @@
+#!/usr/bin/perl
+use Term::ReadLine;
+use Net::EPP::Simple;
+use Getopt::Long;
+use Text::ParseWords;
+use Data::Dumper;
+use strict;
+
+my $opt = {};
+GetOptions($opt,
+	'host=s',
+	'user=s',
+	'pass=s',
+	'timeout=i',
+);
+
+my $epp = Net::EPP::Simple->new(
+	'host'		=> '',
+	'connect'	=> undef,
+	'debug'		=> 1,
+	'login'		=> undef,
+	'reconnect'	=> 0,
+);
+
+my $handlers = {
+	'timeout'	=> \&handle_timeout,
+	'ssl'		=> \&handle_ssl,
+	'host'		=> \&handle_host,
+	'port'		=> \&handle_port,
+	'credentials'	=> \&handle_credentials,
+	'connect'	=> \&handle_connect,
+	'login'		=> \&handle_login,
+	'logout'	=> \&handle_logout,
+	'hello'		=> \&handle_hello,
+	'check'		=> \&handle_check,
+	'info'		=> \&handle_info,
+	'poll'		=> \&handle_poll,
+	'help'		=> \&handle_help,
+	'send'		=> \&handle_send,
+	'BEGIN'		=> \&handle_begin,
+};
+
+note('Welcome to pepper!');
+
+execute_command(sprintf('timeout %d', $opt->{'timeout'})) if ($opt->{'timeout'});
+
+if ($opt->{'host'}) {
+	execute_command(sprintf('host "%s"', quotemeta($opt->{'host'})));
+	execute_command('connect');
+}
+
+if ($opt->{'user'} ne '' && $opt->{'pass'} ne '') {
+	execute_command(sprintf('credentials "%s" "%s"', quotemeta($opt->{'user'}), quotemeta($opt->{'pass'})));
+	execute_command('login');
+}
+
+
+my $term = Term::ReadLine->new('pepper');
+my $prompt = 'pepper> ';
+my $out = $term->OUT || \*STDOUT;
+
+while (my $command = $term->readline($prompt)) {
+	execute_command($command);
+}
+
+$epp->logout if ($epp->{'connected'} && $epp->{'authenticated'});
+$epp->disconnect if ($epp->{'connected'});
+
+note('bye!');
+
+sub execute_command {
+	my $line = shift;
+	my @args = shellwords($line);
+	my $command = shift(@args);
+
+	if (!defined($handlers->{$command})) {
+		error("Unknown command '$command'");
+
+	} else {
+		&{$handlers->{$command}}(@args);
+
+	}
+}
+
+sub handle_timeout {
+	$epp->{'timeout'} = int($_[0]);
+	note("Timeout set to %ds", $_[0]);
+	return 1;
+}
+
+sub handle_ssl {
+	if ($_[0] eq 'on') {
+		$epp->{'ssl'} = 1;
+		note('SSL enabled');
+
+	} elsif ($_[0] eq 'off') {
+		$epp->{'ssl'} = undef;
+		note('SSL disabled');
+
+	} else {
+		error("Invalid SSL mode '%s'", $_[0]);
+		return undef;
+
+	}
+	return 1;
+}
+
+sub handle_host {
+	$epp->{'host'} = $_[0];
+	note("Host set to %s", $_[0]);
+	return 1;
+}
+
+sub handle_port {
+	$epp->{'port'} = int($_[0]);
+	note("Port set to %d", $_[0]);
+	return 1;
+}
+
+sub handle_connect {
+	if ($epp->{'host'} eq '') {
+		error('No host specified');
+		return undef;
+
+	} else {
+		note('Connecting to %s', $epp->{'host'});
+		return $epp->_connect(undef);
+
+	}
+}
+
+sub handle_credentials {
+	if ($_[0] eq '') {
+		error('Missing client ID');
+		return undef;
+
+	} elsif ($_[1] eq '') {
+		error('Missing password');
+		return undef;
+
+	} else {
+		note('Setting credentials for client ID %s', $_[0]);
+		$epp->{'user'} = $_[0];
+		$epp->{'pass'} = $_[1];
+		return 1;
+
+	}
+}
+
+sub handle_login {
+	if ($epp->{'host'} eq '') {
+		error('No host specified');
+		return undef;
+
+	} elsif ($epp->{'user'} eq '' || $epp->{'pass'} eq '') {
+		error('No credentials specified');
+		return undef;
+
+	} elsif (!defined($epp->{'connected'})) {
+		return handle_connect() && handle_login();
+
+	} else {
+		return $epp->_login;
+
+	}
+}
+
+sub handle_logout {
+	if (!defined($epp->{'authenticated'})) {
+		error('Not logged in');
+		return undef;
+
+	} else {
+		note('logging out');
+		return $epp->logout;
+	}
+}
+
+sub handle_hello {
+	return $epp->ping;
+}
+
+sub handle_check {
+	my ($type, $id) = @_;
+	if ($type eq 'domain') {
+		return $epp->check_domain($id);
+
+	} elsif ($type eq 'host') {
+		return $epp->check_host($id);
+
+	} elsif ($type eq 'contact') {
+		return $epp->check_contact($id);
+
+	} else {
+		error("Unsupported object type '$type'");
+		return undef;
+
+	}
+}
+
+sub handle_info {
+	my ($type, $id) = @_;
+	if ($type eq 'domain') {
+		return $epp->domain_info($id);
+
+	} elsif ($type eq 'host') {
+		return $epp->host_info($id);
+
+	} elsif ($type eq 'contact') {
+		return $epp->contact_info($id);
+
+	} else {
+		error("Unsupported object type '$type'");
+		return undef;
+
+	}
+}
+
+sub handle_poll {
+	my ($op, $id) = @_;
+	if ($op eq 'req') {
+		my $frame = Net::EPP::Frame::Command::Poll::Req->new;
+		$epp->request($frame);
+
+	} elsif ($op eq 'ack') {
+		my $frame = Net::EPP::Frame::Command::Poll::Ack->new;
+		$frame->setMsgID($id);
+		$epp->request($frame);
+
+	} else {
+		error("Unsupported poll op '$op'");
+
+	}
+}
+
+sub handle_send {
+	$epp->request($_[0]);
+}
+
+sub handle_begin {
+	my $buffer = '';
+	while (my $line = <STDIN>) {
+		if ($line =~ /^END/) {
+			last;
+
+		} else {
+			$buffer .= $line;
+
+		}
+	}
+	$epp->request($buffer);
+}
+
+sub handle_help {
+	print <<"END";
+Available commands:
+
+host HOST		- set hostname
+port PORT		- set port (defaults to 700)
+ssl on|off		- enable/disable SSL (defaults to on)
+timeout TIMEOUT		- set timeout (default 5 seconds)
+credentials USER PASS	- set login credentials
+connect			- connect to server
+login			- log in
+logout			- log out
+hello			- retrieve greeting from server
+poll req		- request most recent poll message
+poll ack ID		- acknowledge message ID
+check TYPE OBJECT	- check availability of object (TYPE is one of
+			  domain, host, contact)
+info TYPE OBJECT	- retrieve object information (TYPE is one of
+			  domain, host, contact)
+send FILE		- send the contents of FILE
+BEGIN			- begin inputting a frame to send to the server,
+			  end with "END"
+END
+	return 1;
+}
+
+sub note {
+	my ($fmt, @args) = @_;
+	my $msg = sprintf($fmt, @args);
+	print $msg."\n";
+}
+
+sub error {
+	my ($fmt, @args) = @_;
+	note("Error: ".$fmt, @args);
+}
