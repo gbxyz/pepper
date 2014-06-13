@@ -1,4 +1,7 @@
 #!/usr/bin/perl
+# Copyright CentralNic Group plc.
+# This program is Free Software; you can use it and/or modify it under the same
+# terms as Perl itself.
 use Term::ReadLine;
 use Net::EPP::Simple;
 use Getopt::Long;

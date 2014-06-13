@@ -27,4 +27,9 @@ check TYPE OBJECT | check availability of object (TYPE is one of domain, host, c
 info TYPE OBJECT | retrieve object information (TYPE is one of domain, host, contact)
 send FILE | send the contents of FILE
 BEGIN | begin inputting a frame to send to the server, end with "END"
- 
+
+## License
+
+Copyright CentralNic Group plc.
+
+This program is Free Software; you can use it and/or modify it under the same terms as Perl itself.
