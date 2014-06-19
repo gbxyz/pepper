@@ -286,6 +286,7 @@ keepalive SECS		- keep the session alive by pinging the server every
 transfer PARAMS		- object transfer management (see below)
 clone ID NEWID		- clone a contact object into a new contact identified
 			  by NEWID
+exit			- quit the program (logging out if necessary)
 
 Object transfers:
 
