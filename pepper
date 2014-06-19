@@ -41,6 +41,10 @@ my $handlers = {
 	'help'		=> \&handle_help,
 	'send'		=> \&handle_send,
 	'BEGIN'		=> \&handle_begin,
+	'exit'		=> \&handle_exit,
+	'keepalive'	=> \&handle_keepalive,
+	'transfer'	=> \&handle_transfer,
+	'clone'		=> \&handle_clone,
 };
 
 note('Welcome to pepper!');
@@ -63,6 +67,7 @@ my $prompt = 'pepper> ';
 my $out = $term->OUT || \*STDOUT;
 
 while (my $command = $term->readline($prompt)) {
+	$term->addhistory($command);
 	execute_command($command);
 }
 
@@ -276,8 +281,74 @@ info TYPE OBJECT	- retrieve object information (TYPE is one of
 send FILE		- send the contents of FILE
 BEGIN			- begin inputting a frame to send to the server,
 			  end with "END"
+keepalive SECS		- keep the session alive by pinging the server every
+			  SECS seconds. Use zero to cancel
+transfer PARAMS		- object transfer management (see below)
+clone ID NEWID		- clone a contact object into a new contact identified
+			  by NEWID
+
+Object transfers:
+
+Object transfers may be managed with the transfer command. Usage:
+
+  transfer TYPE OBJECT CMD [AUTHINFO [PERIOD]]
+
+where:
+
+TYPE		- one of (domain, contact)
+OBJECT		- domain name or contact ID
+CMD		- one of (request, query, approve, reject, cancel)
+AUTHINFO	- authInfo code (used with request only)
+PERIOD		- additional validity period (used with domain request only)
+
 END
 	return 1;
+}
+
+sub handle_keepalive {
+	$epp->{'keepalive'} = int(shift);
+	alarm(0);
+	if ($epp->{'keepalive'} < 1) {
+		note('disabling keepalive');
+		undef($SIG{'ALRM'});
+
+	} else {
+		note('setting keepalive interval to %ds', $epp->{'keepalive'});
+		$SIG{'ALRM'} = sub {
+			note('ping');
+			$epp->ping if ($epp->{'connected'});
+			alarm($epp->{'keepalive'});
+		};
+		alarm($epp->{'keepalive'});
+	}
+}
+
+sub handle_exit {
+	$epp->logout if ($epp->{'authenticated'});
+	$epp->disconnect if ($epp->{'connected'});
+	note('bye!');
+	exit;
+}
+
+sub handle_transfer {
+	my ($type, $object, $cmd, $authinfo, $period) = @_;
+
+	return error("invalid object type '%s'", $type) if ($type ne 'domain' && $type ne 'contact');
+	return error("invalid command '%s'", $cmd) if ($cmd ne 'query' && $cmd ne 'request' && $cmd ne 'cancel' && $cmd ne 'approve' && $cmd ne 'reject');
+
+	return $epp->_transfer_request($cmd, $type, $object, $authinfo, $period);
+}
+
+sub handle_clone {
+	my ($id, $new) = @_;
+
+	my $info = $epp->contact_info($id) || return;
+	$info->{'id'} = $new;
+
+	my @chars = ('a'..'z'), ('A'..'Z'), (0-9);
+	$info->{'authInfo'} .= $chars[int(rand(scalar(@chars)))-1] while (length($info->{'authinfo'}) < 12);
+
+	return $epp->create_contact($info);
 }
 
 sub note {
