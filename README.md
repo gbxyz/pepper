@@ -27,6 +27,24 @@ check TYPE OBJECT | check availability of object (TYPE is one of domain, host, c
 info TYPE OBJECT | retrieve object information (TYPE is one of domain, host, contact)
 send FILE | send the contents of FILE
 BEGIN | begin inputting a frame to send to the server, end with "END"
+keepalive SECS | keep the session alive by pinging the server every SECS seconds. Use zero to cancel
+transfer PARAMS | object transfer management (see below)
+clone ID NEWID | clone a contact object into a new contact identified by NEWID
+exit | quit the program (logging out if necessary)
+
+## Object transfers:
+
+Object transfers may be managed with the transfer command. Usage:
+
+  transfer TYPE OBJECT CMD [AUTHINFO [PERIOD]]
+  
+Parameter | Description
+----------|------------  
+TYPE | one of (domain, contact)
+OBJECT | domain name or contact ID
+CMD | one of (request, query, approve, reject, cancel)
+AUTHINFO | authInfo code (used with request only)
+PERIOD | additional validity period (used with domain request only)
 
 ## License
 
