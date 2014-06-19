@@ -36,7 +36,7 @@ exit | quit the program (logging out if necessary)
 
 Object transfers may be managed with the transfer command. Usage:
 
-  transfer TYPE OBJECT CMD [AUTHINFO [PERIOD]]
+`transfer TYPE OBJECT CMD [AUTHINFO [PERIOD]]`
   
 Parameter | Description
 ----------|------------  
