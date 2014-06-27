@@ -15,14 +15,8 @@ GetOptions($opt,
 	'user=s',
 	'pass=s',
 	'timeout=i',
-);
-
-my $epp = Net::EPP::Simple->new(
-	'host'		=> '',
-	'connect'	=> undef,
-	'debug'		=> 1,
-	'login'		=> undef,
-	'reconnect'	=> 0,
+	'help',
+	'exec=s',
 );
 
 my $handlers = {
@@ -45,7 +39,24 @@ my $handlers = {
 	'keepalive'	=> \&handle_keepalive,
 	'transfer'	=> \&handle_transfer,
 	'clone'		=> \&handle_clone,
+	'delete'	=> \&handle_delete,
+	'renew'		=> \&handle_renew,
+	'create'	=> \&handle_create,
 };
+
+if ($opt->{'help'}) {
+	execute_command('help');
+	exit;
+}
+
+my $epp = Net::EPP::Simple->new(
+	'host'		=> '',
+	'connect'	=> undef,
+	'debug'		=> ($opt->{'exec'} eq ''),
+	'login'		=> undef,
+	'reconnect'	=> 0,
+);
+
 
 note('Welcome to pepper!');
 
@@ -61,6 +72,18 @@ if ($opt->{'user'} ne '' && $opt->{'pass'} ne '') {
 	execute_command('login');
 }
 
+if ($opt->{'exec'} ne '') {
+	if (!$epp->{'authenticated'}) {
+		fatal('not logged in');
+
+	} else {
+		$epp->{'debug'} = 1;
+		execute_command($opt->{'exec'});
+		$epp->{'debug'} = 0;
+		exit;
+
+	}
+}
 
 my $term = Term::ReadLine->new('pepper');
 my $prompt = 'pepper> ';
@@ -284,8 +307,11 @@ BEGIN			- begin inputting a frame to send to the server,
 keepalive SECS		- keep the session alive by pinging the server every
 			  SECS seconds. Use zero to cancel
 transfer PARAMS		- object transfer management (see below)
-clone ID NEWID		- clone a contact object into a new contact identified
-			  by NEWID
+clone TYPE OLD NEW	- clone a domain or contact object OLD into a new object
+			  identified by NEW
+delete TYPE ID		- delete an object
+renew DOMAIN PERIOD	- renew a domain (1 year by default)
+create host PARAMS	- create a host object (see below)
 exit			- quit the program (logging out if necessary)
 
 Object transfers:
@@ -301,6 +327,15 @@ OBJECT		- domain name or contact ID
 CMD		- one of (request, query, approve, reject, cancel)
 AUTHINFO	- authInfo code (used with request only)
 PERIOD		- additional validity period (used with domain request only)
+
+Creating Host Objects
+
+  create host HOSTNAME [IP [IP [IP [...]]]]
+
+Create a host object with the specified HOSTNAME. IP address may also be
+specified: IPv4 and IPv6 addresses are automatically detected.
+
+Domains and contacts can be created using the "clone" command.
 
 END
 	return 1;
@@ -341,15 +376,108 @@ sub handle_transfer {
 }
 
 sub handle_clone {
-	my ($id, $new) = @_;
+	my ($type, $old, $new) = @_;
 
-	my $info = $epp->contact_info($id) || return;
+	if (lc($type) eq 'contact') {
+		return handle_contact_clone($old, $new);
+
+	} elsif (lc($type) eq 'domain') {
+		return handle_contact_domain($old, $new);
+
+	} else {
+		error("Unsupported object type '$type'");
+
+	}
+}
+
+sub handle_contact_clone {
+	my ($old, $new) = @_;
+
+	my $info = $epp->contact_info($old) || return;
+
 	$info->{'id'} = $new;
-
-	my @chars = ('a'..'z'), ('A'..'Z'), (0-9);
-	$info->{'authInfo'} .= $chars[int(rand(scalar(@chars)))-1] while (length($info->{'authinfo'}) < 12);
+	$info->{'authInfo'} = generate_authinfo();
 
 	return $epp->create_contact($info);
+}
+
+sub handle_contact_domain {
+	my ($old, $new) = @_;
+
+	my $info = $epp->domain_info($old) || return;
+
+	$info->{'name'} = $new;
+	$info->{'authInfo'} = generate_authinfo();
+
+	return $epp->create_domain($info);
+}
+
+sub generate_authinfo {
+	my $authinfo;
+
+	my @chars = ('a'..'z'), ('A'..'Z'), (0-9);
+	$authinfo .= $chars[int(rand(scalar(@chars)))-1] while (length($authinfo) < 12);
+
+	return $authinfo;
+}
+
+sub handle_delete {
+	my ($type, $id) = @_;
+	if ($type eq 'domain') {
+		return $epp->delete_domain($id);
+
+	} elsif ($type eq 'host') {
+		return $epp->delete_host($id);
+
+	} elsif ($type eq 'contact') {
+		return $epp->delete_contact($id);
+
+	} else {
+		error("Unsupported object type '$type'");
+		return undef;
+
+	}
+}
+
+sub handle_renew {
+	my ($domain, $period) = @_;
+	$period = 1 if (!$period);
+
+	my $info = $epp->domain_info($domain);
+	return undef if (!$info);
+
+	my ($date, undef) = split(/T/, $info->{'exDate'}, 2);
+
+	return $epp->renew_domain({
+		'name'		=> $domain,
+		'period'	=> $period,
+		'cur_exp_date'	=> $date,
+	});
+}
+
+sub handle_create {
+	my $type = lc(shift);
+
+	if ($type eq 'host') {
+		return create_host(@_);
+
+	} else {
+		return error("invalid type '%s'", $type);
+
+	}
+}
+
+sub create_host {
+	my $host = { 'name' => shift };
+
+	if (scalar(@_) > 0) {
+		$host->{'addrs'} = [];
+		foreach my $addr (@_) {
+			my $version = 'v'.($addr =~ /:/ ? 6 : 4);
+			push(@{$host->{'addrs'}}, { 'ip' => $addr, 'version' => $version });
+		}
+	}
+	return $epp->create_host($host);
 }
 
 sub note {
@@ -361,4 +489,10 @@ sub note {
 sub error {
 	my ($fmt, @args) = @_;
 	note("Error: ".$fmt, @args);
+}
+
+sub fatal {
+	my ($fmt, @args) = @_;
+	note("Fatal Error: ".$fmt, @args);
+	exit(1);
 }
