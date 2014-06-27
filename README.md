@@ -4,7 +4,7 @@ Pepper is a command-line client for the EPP protocol. It's written in Perl and u
 
 ## Usage
 
-`pepper [--host=HOST] [--user=USER] [--pass=PASS]`
+`pepper [--host=HOST] [--user=USER] [--pass=PASS] [--exec=COMMAND]`
 
 ## Command Line
 
@@ -29,7 +29,10 @@ send FILE | send the contents of FILE
 BEGIN | begin inputting a frame to send to the server, end with "END"
 keepalive SECS | keep the session alive by pinging the server every SECS seconds. Use zero to cancel
 transfer PARAMS | object transfer management (see below)
-clone ID NEWID | clone a contact object into a new contact identified by NEWID
+clone TYPE OLD NEW | clone an object of type TYPE into a new contact identified by NEW
+delete TYPE ID | delete the object of type TYPE identified by ID
+renew DOMAIN PERIOD | renew the domain DOMAIN for PERIOD years
+create host HOSTNAME \[IP \[IP \[...\]\]\] | create a host object identified by HOSTNAME with optional IP address info
 exit | quit the program (logging out if necessary)
 
 ## Object transfers:
