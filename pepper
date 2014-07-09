@@ -6,7 +6,7 @@ use Term::ReadLine;
 use Net::EPP::Simple;
 use Getopt::Long;
 use Text::ParseWords;
-use Data::Dumper;
+use Pod::Usage;
 use strict;
 
 my $opt = {};
@@ -14,6 +14,7 @@ GetOptions($opt,
 	'host=s',
 	'user=s',
 	'pass=s',
+	'port=i',
 	'timeout=i',
 	'help',
 	'exec=s',
@@ -25,6 +26,8 @@ my $handlers = {
 	'host'		=> \&handle_host,
 	'port'		=> \&handle_port,
 	'credentials'	=> \&handle_credentials,
+	'id'		=> \&handle_id,
+	'pw'		=> \&handle_pw,
 	'connect'	=> \&handle_connect,
 	'login'		=> \&handle_login,
 	'logout'	=> \&handle_logout,
@@ -45,7 +48,7 @@ my $handlers = {
 };
 
 if ($opt->{'help'}) {
-	execute_command('help');
+	execute_command('help USAGE');
 	exit;
 }
 
@@ -60,17 +63,14 @@ my $epp = Net::EPP::Simple->new(
 
 note('Welcome to pepper!');
 
-execute_command(sprintf('timeout %d', $opt->{'timeout'})) if ($opt->{'timeout'});
+execute_command(sprintf('timeout %d',	$opt->{'timeout'}))	if ($opt->{'timeout'});
+execute_command(sprintf('port %d',	$opt->{'port'}))	if ($opt->{'port'});
+execute_command(sprintf('host %s',	$opt->{'host'}))	if ($opt->{'host'});
+execute_command(sprintf('id %s',	$opt->{'user'}))	if ($opt->{'user'});
+execute_command(sprintf('pw %s',	$opt->{'pass'}))	if ($opt->{'pass'});
 
-if ($opt->{'host'}) {
-	execute_command(sprintf('host "%s"', quotemeta($opt->{'host'})));
-	execute_command('connect');
-}
-
-if ($opt->{'user'} ne '' && $opt->{'pass'} ne '') {
-	execute_command(sprintf('credentials "%s" "%s"', quotemeta($opt->{'user'}), quotemeta($opt->{'pass'})));
-	execute_command('login');
-}
+execute_command('connect') if ($epp->{'host'} ne '');
+execute_command('login') if ($epp->{'user'} ne '' && $epp->{'pass'} ne '');
 
 if ($opt->{'exec'} ne '') {
 	if (!$epp->{'authenticated'}) {
@@ -96,6 +96,8 @@ while (my $command = $term->readline($prompt)) {
 
 $epp->logout if ($epp->{'connected'} && $epp->{'authenticated'});
 $epp->disconnect if ($epp->{'connected'});
+
+$epp->{'debug'} = 0;
 
 note('bye!');
 
@@ -170,12 +172,21 @@ sub handle_credentials {
 		return undef;
 
 	} else {
-		note('Setting credentials for client ID %s', $_[0]);
-		$epp->{'user'} = $_[0];
-		$epp->{'pass'} = $_[1];
+		handle_id($_[0]);
+		handle_pw($_[1]);
 		return 1;
 
 	}
+}
+
+sub handle_id {
+	$epp->{'user'} = shift;
+	note("User ID set to '%s'", $epp->{'user'});
+}
+
+sub handle_pw {
+	$epp->{'pass'} = shift;
+	note("Password set to '%s'", $epp->{'pass'});
 }
 
 sub handle_login {
@@ -283,62 +294,11 @@ sub handle_begin {
 }
 
 sub handle_help {
-	print <<"END";
-Available commands:
-
-host HOST		- set hostname
-port PORT		- set port (defaults to 700)
-ssl on|off		- enable/disable SSL (defaults to on)
-timeout TIMEOUT		- set timeout (default 5 seconds)
-credentials USER PASS	- set login credentials
-connect			- connect to server
-login			- log in
-logout			- log out
-hello			- retrieve greeting from server
-poll req		- request most recent poll message
-poll ack ID		- acknowledge message ID
-check TYPE OBJECT	- check availability of object (TYPE is one of
-			  domain, host, contact)
-info TYPE OBJECT	- retrieve object information (TYPE is one of
-			  domain, host, contact)
-send FILE		- send the contents of FILE
-BEGIN			- begin inputting a frame to send to the server,
-			  end with "END"
-keepalive SECS		- keep the session alive by pinging the server every
-			  SECS seconds. Use zero to cancel
-transfer PARAMS		- object transfer management (see below)
-clone TYPE OLD NEW	- clone a domain or contact object OLD into a new object
-			  identified by NEW
-delete TYPE ID		- delete an object
-renew DOMAIN PERIOD	- renew a domain (1 year by default)
-create host PARAMS	- create a host object (see below)
-exit			- quit the program (logging out if necessary)
-
-Object transfers:
-
-Object transfers may be managed with the transfer command. Usage:
-
-  transfer TYPE OBJECT CMD [AUTHINFO [PERIOD]]
-
-where:
-
-TYPE		- one of (domain, contact)
-OBJECT		- domain name or contact ID
-CMD		- one of (request, query, approve, reject, cancel)
-AUTHINFO	- authInfo code (used with request only)
-PERIOD		- additional validity period (used with domain request only)
-
-Creating Host Objects
-
-  create host HOSTNAME [IP [IP [IP [...]]]]
-
-Create a host object with the specified HOSTNAME. IP address may also be
-specified: IPv4 and IPv6 addresses are automatically detected.
-
-Domains and contacts can be created using the "clone" command.
-
-END
-	return 1;
+	pod2usage(
+		'-verbose'	=> 99,
+		'-sections'	=> join('|', @_) || 'SYNTAX',
+		'-exitval'	=> 'NOEXIT',
+	);
 }
 
 sub handle_keepalive {
@@ -352,7 +312,9 @@ sub handle_keepalive {
 		note('setting keepalive interval to %ds', $epp->{'keepalive'});
 		$SIG{'ALRM'} = sub {
 			note('ping');
+			my $was = $epp->{'debug'};
 			$epp->ping if ($epp->{'connected'});
+			$epp->{'debug'} = $was;
 			alarm($epp->{'keepalive'});
 		};
 		alarm($epp->{'keepalive'});
@@ -363,6 +325,7 @@ sub handle_exit {
 	$epp->logout if ($epp->{'authenticated'});
 	$epp->disconnect if ($epp->{'connected'});
 	note('bye!');
+	$epp->{'debug'} = 0;
 	exit;
 }
 
@@ -496,3 +459,198 @@ sub fatal {
 	note("Fatal Error: ".$fmt, @args);
 	exit(1);
 }
+
+=pod
+
+=head1 NAME
+
+Pepper - A command line EPP client
+
+=head1 DESCRIPTION
+
+Pepper is a command-line client for the EPP protocol. It's written in Perl and uses the Net::EPP module.
+
+=head1 USAGE
+
+pepper [--host=HOST] [--port=PORT] [--timeout=TIMEOUT] [--user=USER] [--pass=PASS] [--exec=COMMAND]
+
+=over
+
+=item --host=HOST
+
+Specify the host name to connect to.
+
+=item --port=PORT
+
+Specify the port. Defaults to 700.
+
+=item --timeout=TIMEOUT
+
+Specify the timeout. Defaults to 3.
+
+=item --user=USER
+
+Specify user ID.
+
+=item --pass=PASS
+
+Specify password.
+
+=item --exec=COMMAND
+
+Specify command to execute. May be used multiple times. See L<SYNTAX> for more details.
+
+=back
+
+=head1 SYNTAX
+
+Once running, Pepper provides a simple command line interface. The available commands are listed below:
+
+=over
+
+=item host HOST
+
+set hostname
+
+=item port PORT
+
+set port (defaults to 700)
+
+=item ssl on|off
+
+enable/disable SSL (defaults to on)
+
+=item timeout TIMEOUT
+
+set timeout (default 5 seconds)
+
+=item id USER
+
+set username
+
+=item pw PASS
+
+set password
+
+=item connect
+
+connect to server
+
+=item login
+
+log in
+
+=item logout
+
+log out
+
+=item hello
+
+retrieve greeting from server
+
+=item poll req
+
+request most recent poll message
+
+=item poll ack ID
+
+acknowledge message ID
+
+=item check TYPE OBJECT
+
+check availability of object (TYPE is one of domain, host, contact)
+
+=item info TYPE OBJECT
+
+retrieve object information (TYPE is one of domain, host, contact)
+
+=item send FILE
+
+send the contents of FILE
+
+=item BEGIN
+
+begin inputting a frame to send to the server, end with "END"
+
+=item keepalive SECS
+
+keep the session alive by pinging the server every SECS seconds. Use zero to cancel
+
+=item transfer PARAMS
+
+object transfer management (see below)
+
+=item clone TYPE OLD NEW
+
+clone a domain or contact object OLD into a new object identified by NEW
+
+=item delete TYPE ID
+
+delete an object
+
+=item renew DOMAIN PERIOD
+
+renew a domain (1 year by default)
+
+=item create host PARAMS
+
+create a host object (see below)
+
+=item exit
+
+quit the program (logging out if necessary)
+
+=back
+
+=head2 OBJECT TRANSFERS
+
+Object transfers may be managed with the transfer command. Usage:
+
+  transfer TYPE OBJECT CMD [AUTHINFO [PERIOD]]
+  
+where:
+
+=over
+
+=item TYPE
+
+one of (domain, contact)
+
+=item OBJECT
+
+domain name or contact ID
+
+=item CMD
+
+one of (request, query, approve, reject, cancel)
+
+=item AUTHINFO
+
+authInfo code (used with request only)
+
+=item PERIOD
+
+additional validity period (used with domain request only)
+
+=back
+
+=head2 CREATING DOMAIN AND CONTACT OBJECTS
+
+Domains and contacts can be created using the "clone" command.
+
+=head2 CREATING HOST OBJECTS
+
+Syntax:
+
+  create host HOSTNAME [IP [IP [IP [...]]]]
+
+Create a host object with the specified HOSTNAME. IP address may also be
+specified: IPv4 and IPv6 addresses are automatically detected.
+
+=head1 LICENSE
+
+Copyright CentralNic Group plc.
+
+This program is Free Software; you can use it and/or modify it under the same terms as Perl itself.
+
+=cut
