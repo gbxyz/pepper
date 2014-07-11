@@ -102,6 +102,10 @@ Once running, Pepper provides a simple command line interface. The available com
 
     begin inputting a frame to send to the server, end with "END"
 
+- edit
+
+    Invoke $EDITOR and send the resulting file
+
 - keepalive SECS
 
     keep the session alive by pinging the server every SECS seconds. Use zero to cancel
