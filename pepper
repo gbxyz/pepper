@@ -7,6 +7,7 @@ use Net::EPP::Simple;
 use Getopt::Long;
 use Text::ParseWords;
 use Pod::Usage;
+use File::Temp qw(tmpnam);
 use strict;
 
 my $opt = {};
@@ -45,6 +46,7 @@ my $handlers = {
 	'delete'	=> \&handle_delete,
 	'renew'		=> \&handle_renew,
 	'create'	=> \&handle_create,
+	'edit'		=> \&handle_edit,
 };
 
 if ($opt->{'help'}) {
@@ -311,8 +313,8 @@ sub handle_keepalive {
 	} else {
 		note('setting keepalive interval to %ds', $epp->{'keepalive'});
 		$SIG{'ALRM'} = sub {
-			note('ping');
 			my $was = $epp->{'debug'};
+			$epp->{debug} = 0;
 			$epp->ping if ($epp->{'connected'});
 			$epp->{'debug'} = $was;
 			alarm($epp->{'keepalive'});
@@ -443,6 +445,26 @@ sub create_host {
 	return $epp->create_host($host);
 }
 
+sub handle_edit {
+	my $file = tmpnam();
+	if (0 != system(sprintf("%s %s", $ENV{'EDITOR'}, quotemeta($file)))) {
+		error("$ENV{'EDITOR'} exited abnormally");
+
+	} else {
+		if (!-e $file || 0 == (stat($file))[7]) {
+			note("no data to send");
+
+		} else {
+			local $/ = undef;
+			open(FILE, $file);
+			my $frame = <FILE>;
+			close(FILE);
+			unlink($file);
+			$epp->request($frame);
+		}
+	}
+}
+
 sub note {
 	my ($fmt, @args) = @_;
 	my $msg = sprintf($fmt, @args);
@@ -571,6 +593,10 @@ send the contents of FILE
 =item BEGIN
 
 begin inputting a frame to send to the server, end with "END"
+
+=item edit
+
+Invoke $EDITOR and send the resulting file
 
 =item keepalive SECS
 
