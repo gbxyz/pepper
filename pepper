@@ -494,31 +494,31 @@ Pepper is a command-line client for the EPP protocol. It's written in Perl and u
 
 =head1 USAGE
 
-pepper [--host=HOST] [--port=PORT] [--timeout=TIMEOUT] [--user=USER] [--pass=PASS] [--exec=COMMAND]
+	pepper [--host=HOST] [--port=PORT] [--timeout=TIMEOUT] [--user=USER] [--pass=PASS] [--exec=COMMAND]
 
 =over
 
-=item --host=HOST
+=item C<--host=HOST>
 
 Specify the host name to connect to.
 
-=item --port=PORT
+=item C<--port=PORT>
 
 Specify the port. Defaults to 700.
 
-=item --timeout=TIMEOUT
+=item C<--timeout=TIMEOUT>
 
 Specify the timeout. Defaults to 3.
 
-=item --user=USER
+=item C<--user=USER>
 
 Specify user ID.
 
-=item --pass=PASS
+=item C<--pass=PASS>
 
 Specify password.
 
-=item --exec=COMMAND
+=item C<--exec=COMMAND>
 
 Specify command to execute. May be used multiple times. See L<SYNTAX> for more details.
 
@@ -530,99 +530,103 @@ Once running, Pepper provides a simple command line interface. The available com
 
 =over
 
-=item host HOST
+=item C<help>
+
+display manual
+
+=item C<host HOST>
 
 set hostname
 
-=item port PORT
+=item C<port PORT>
 
 set port (defaults to 700)
 
-=item ssl on|off
+=item C<ssl on|off>
 
 enable/disable SSL (defaults to on)
 
-=item timeout TIMEOUT
+=item C<timeout TIMEOUT>
 
 set timeout (default 5 seconds)
 
-=item id USER
+=item C<id USER>
 
 set username
 
-=item pw PASS
+=item C<pw PASS>
 
 set password
 
-=item connect
+=item C<connect>
 
 connect to server
 
-=item login
+=item C<login>
 
 log in
 
-=item logout
+=item C<logout>
 
 log out
 
-=item hello
+=item C<hello>
 
 retrieve greeting from server
 
-=item poll req
+=item C<poll req>
 
 request most recent poll message
 
-=item poll ack ID
+=item C<poll ack ID>
 
-acknowledge message ID
+acknowledge message C<ID>
 
-=item check TYPE OBJECT
+=item C<check TYPE OBJECT>
 
-check availability of object (TYPE is one of domain, host, contact)
+check availability of object (C<TYPE> is one of C<domain>, C<host>, C<contact>)
 
-=item info TYPE OBJECT
+=item C<info TYPE OBJECT>
 
-retrieve object information (TYPE is one of domain, host, contact)
+retrieve object information (C<TYPE> is one of C<domain>, C<host>, C<contact>)
 
-=item send FILE
+=item C<send FILE>
 
-send the contents of FILE
+send the contents of C<FILE>
 
-=item BEGIN
+=item C<BEGIN>
 
-begin inputting a frame to send to the server, end with "END"
+begin inputting a frame to send to the server, end with "C<END>"
 
-=item edit
+=item C<edit>
 
-Invoke $EDITOR and send the resulting file
+Invoke C<$EDITOR> and send the resulting file
 
-=item keepalive SECS
+=item C<keepalive SECS>
 
-keep the session alive by pinging the server every SECS seconds. Use zero to cancel
+keep the session alive by pinging the server every C<SECS> seconds. Use zero to cancel
 
-=item transfer PARAMS
+=item C<transfer PARAMS>
 
 object transfer management (see below)
 
-=item clone TYPE OLD NEW
+=item C<clone TYPE OLD NEW>
 
-clone a domain or contact object OLD into a new object identified by NEW
+clone a domain or contact object C<OLD> into a new object identified by C<NEW> (C<TYPE> is one of C<domain>, C<contact>)
 
-=item delete TYPE ID
+=item C<delete TYPE ID>
 
-delete an object
+delete an object (C<TYPE> is one of C<domain>, C<host>, C<contact>)
 
-=item renew DOMAIN PERIOD
+=item C<renew DOMAIN PERIOD>
 
 renew a domain (1 year by default)
 
-=item create host PARAMS
+=item C<create host PARAMS>
 
 create a host object (see below)
 
-=item exit
+=item C<exit>
 
 quit the program (logging out if necessary)
 
@@ -638,31 +642,31 @@ where:
 
 =over
 
-=item TYPE
+=item C<TYPE>
 
-one of (domain, contact)
+one of C<domain>, C<contact>
 
-=item OBJECT
+=item C<OBJECT>
 
 domain name or contact ID
 
-=item CMD
+=item C<CMD>
 
-one of (request, query, approve, reject, cancel)
+one of (C<request>, C<query>, C<approve>, C<reject>, C<cancel>)
 
-=item AUTHINFO
+=item C<AUTHINFO>
 
-authInfo code (used with request only)
+authInfo code (used with C<request> only)
 
-=item PERIOD
+=item C<PERIOD>
 
-additional validity period (used with domain request only)
+additional validity period (used with domain C<request> only)
 
 =back
 
 =head2 CREATING DOMAIN AND CONTACT OBJECTS
 
-Domains and contacts can be created using the "clone" command.
+Domains and contacts can be created using the C<clone> command.
 
 =head2 CREATING HOST OBJECTS
 
@@ -670,7 +674,7 @@ Syntax:
 
   create host HOSTNAME [IP [IP [IP [...]]]]
 
-Create a host object with the specified HOSTNAME. IP address may also be
+Create a host object with the specified C<HOSTNAME>. IP address may also be
 specified: IPv4 and IPv6 addresses are automatically detected.
 
 =head1 LICENSE
