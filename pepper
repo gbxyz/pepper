@@ -62,8 +62,17 @@ my $epp = Net::EPP::Simple->new(
 	'reconnect'	=> 0,
 );
 
+my $term = Term::ReadLine->new('pepper');
+my $prompt = 'pepper> ';
+my $out = $term->OUT || \*STDOUT;
+
+my $histfile = $ENV{'HOME'}.'/.pepper_history';
+
+$term->ReadHistory($histfile);
 
 note('Welcome to pepper!');
+
+note('For best results, install Term::ReadLine::Gnu') if ('Term::ReadLine::Gnu' ne $term->ReadLine);
 
 execute_command(sprintf('timeout %d',	$opt->{'timeout'}))	if ($opt->{'timeout'});
 execute_command(sprintf('port %d',	$opt->{'port'}))	if ($opt->{'port'});
@@ -87,14 +96,19 @@ if ($opt->{'exec'} ne '') {
 	}
 }
 
-my $term = Term::ReadLine->new('pepper');
-my $prompt = 'pepper> ';
-my $out = $term->OUT || \*STDOUT;
+while (1) {
+	my $command = $term->readline($prompt);
+	if (!defined($command)) {
+		last;
 
-while (my $command = $term->readline($prompt)) {
-	$term->addhistory($command);
-	execute_command($command);
+	} elsif ($command ne '') {
+#		$term->addhistory($command);
+		execute_command($command);
+
+	}
 }
+
+$term->WriteHistory($histfile);
 
 $epp->logout if ($epp->{'connected'} && $epp->{'authenticated'});
 $epp->disconnect if ($epp->{'connected'});
@@ -105,6 +119,8 @@ note('bye!');
 
 sub execute_command {
 	my $line = shift;
+	return if ($line eq '');
+
 	my @args = shellwords($line);
 	my $command = shift(@args);
 
