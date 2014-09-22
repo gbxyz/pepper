@@ -92,7 +92,7 @@ Once running, Pepper provides a simple command line interface. The available com
 
 - `check TYPE OBJECT`
 
-    check availability of object (`TYPE` is one of `domain`, `host`, `contact`)
+    check availability of object (`TYPE` is one of `domain`, `host`, `contact`, `claims`, `fee`). See ["CLAIMS AND FEE CHECKS"](#claims-and-fee-checks) for more information about the latter two.
 
 - `info TYPE OBJECT`
 
@@ -116,7 +116,7 @@ Once running, Pepper provides a simple command line interface. The available com
 
 - `transfer PARAMS`
 
-    object transfer management (see below)
+    object transfer management See ["OBJECT TRANSFERS"](#object-transfers) for more information.
 
 - `clone TYPE OLD NEW`
 
@@ -132,7 +132,7 @@ Once running, Pepper provides a simple command line interface. The available com
 
 - `create host PARAMS`
 
-    create a host object (see below)
+    create a host object. See ["CREATING HOST OBJECTS"](#creating-host-objects) for more information.
 
 - `exit`
 
@@ -167,6 +167,26 @@ where:
 
     additional validity period (used with domain `request` only)
 
+## CLAIMS AND FEE CHECKS
+
+Pepper provides limited support for the the launch and fee extensions:
+
+### CLAIMS CHECK
+
+The following command will extend the standard <check> command to perform
+a claims check as per Section 3.1.1. of [draft-ietf-eppext-launchphase](https://metacpan.org/pod/draft-ietf-eppext-launchphase).
+
+        pepper> check claims example.xyz
+
+The following command will extend the standard <check> command to perform
+a fee check as per Section 3.1.1. of [draft-brown-epp-fees-02](https://metacpan.org/pod/draft-brown-epp-fees-02).
+
+        pepper> check fee example.xyz COMMAND [CURRENCY [PERIOD]]
+
+`COMMAND` must be one of: `create`, `renew`, `transfer`, `restore`.
+`CURRENCY` is OPTIONAL but if provided, must be a three-character currency code.
+`PERIOD` is also OPTIONAL but if provided, must be an integer between 1 and 99.
+
 ## CREATING DOMAIN AND CONTACT OBJECTS
 
 Domains and contacts can be created using the `clone` command.
@@ -185,3 +205,11 @@ specified: IPv4 and IPv6 addresses are automatically detected.
 Copyright CentralNic Group plc.
 
 This program is Free Software; you can use it and/or modify it under the same terms as Perl itself.
+
+# POD ERRORS
+
+Hey! __The above document had some coding errors, which are explained below:__
+
+- Around line 768:
+
+    Unknown directive: =head
