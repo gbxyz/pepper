@@ -96,14 +96,21 @@ if ($opt->{'exec'} ne '') {
 	}
 }
 
+my $last;
 while (1) {
 	my $command = $term->readline($prompt);
 	if (!defined($command)) {
 		last;
 
 	} elsif ($command ne '') {
-#		$term->addhistory($command);
-		execute_command($command);
+		if ($command eq '!!') {
+			execute_command($last) if ($last ne '');
+
+		} else {
+			$last = $command;
+			execute_command($command);
+
+		}
 
 	}
 }
@@ -241,9 +248,15 @@ sub handle_hello {
 }
 
 sub handle_check {
-	my ($type, $id) = @_;
+	my ($type, $id, @extra) = @_;
 	if ($type eq 'domain') {
 		return $epp->check_domain($id);
+
+	} elsif ($type eq 'claims') {
+		return handle_claims_check($id);
+
+	} elsif ($type eq 'fee') {
+		return handle_fee_check($id, @extra);
 
 	} elsif ($type eq 'host') {
 		return $epp->check_host($id);
@@ -256,6 +269,67 @@ sub handle_check {
 		return undef;
 
 	}
+}
+
+sub handle_claims_check {
+	my $domain = shift;
+	my $frame = Net::EPP::Frame::Command::Check::Domain->new;
+	$frame->addDomain($domain);
+
+	my $launch_ns = 'urn:ietf:params:xml:ns:launch-1.0';
+
+	my $phase = $frame->createElementNS($launch_ns, 'phase');
+	$phase->appendChild($frame->createTextNode('claims'));
+
+	my $launch = $frame->createElementNS($launch_ns, 'check');
+	$launch->setAttribute('type', 'claims');
+	$launch->appendChild($phase);
+
+	my $extn = $frame->createElement('extension');
+	$extn->appendChild($launch);
+
+	$frame->clTRID->parentNode->insertBefore($extn, $frame->clTRID);
+
+	return $epp->request($frame);
+}
+
+sub handle_fee_check {
+	my %params;
+	($params{'name'}, $params{'command'}, $params{'currency'}, $params{'period'}) = @_;
+
+	my $domain = shift;
+	my $frame = Net::EPP::Frame::Command::Check::Domain->new;
+	$frame->addDomain($params{'name'});
+
+	my $fee_ns = 'urn:ietf:params:xml:ns:fee-0.5';
+	my $ok = undef;
+	foreach my $el ($epp->greeting->getElementsByTagName('extURI')) {
+		$ok = 1 if ($el->textContent eq $fee_ns);
+	}
+
+	if (!$ok) {
+		error("Server does not support the version of the fee extension that I support!");
+		return undef;
+	}
+
+	my $domain = $frame->createElementNS($fee_ns, 'domain');
+	foreach my $name (qw(name currency command period)) {
+		next if ($params{$name} eq '');
+		my $el = $frame->createElementNS($fee_ns, $name);
+		$el->appendChild($frame->createTextNode($params{$name}));
+		$el->setAttribute('unit', 'y') if ('period' eq $name);
+		$domain->appendChild($el);
+	}
+
+	my $check = $frame->createElementNS($fee_ns, 'check');
+	$check->appendChild($domain);
+
+	my $extn = $frame->createElement('extension');
+	$extn->appendChild($check);
+
+	$frame->clTRID->parentNode->insertBefore($extn, $frame->clTRID);
+
+	return $epp->request($frame);
 }
 
 sub handle_info {
@@ -600,7 +674,7 @@ acknowledge message C<ID>
 
 =item C<check TYPE OBJECT>
 
-check availability of object (C<TYPE> is one of C<domain>, C<host>, C<contact>)
+check availability of object (C<TYPE> is one of C<domain>, C<host>, C<contact>, C<claims>, C<fee>). See L<CLAIMS AND FEE CHECKS> for more information about the latter two.
 
 =item C<info TYPE OBJECT>
 
@@ -624,7 +698,7 @@ keep the session alive by pinging the server every C<SECS> seconds. Use zero to 
 
 =item C<transfer PARAMS>
 
-object transfer management (see below)
+object transfer management See L<OBJECT TRANSFERS> for more information.
 
 =item C<clone TYPE OLD NEW>
 
@@ -640,7 +714,7 @@ renew a domain (1 year by default)
 
 =item C<create host PARAMS>
 
-create a host object (see below)
+create a host object. See L<CREATING HOST OBJECTS> for more information.
 
 =item C<exit>
 
@@ -679,6 +753,28 @@ authInfo code (used with C<request> only)
 additional validity period (used with domain C<request> only)
 
 =back
+
+=head2 CLAIMS AND FEE CHECKS
+
+Pepper provides limited support for the the launch and fee extensions:
+
+=head3 CLAIMS CHECK
+
+The following command will extend the standard E<lt>checkE<gt> command to perform
+a claims check as per Section 3.1.1. of L<draft-ietf-eppext-launchphase>.
+
+	pepper> check claims example.xyz
+
+=head 3 FEE CHECK
+
+The following command will extend the standard E<lt>checkE<gt> command to perform
+a fee check as per Section 3.1.1. of L<draft-brown-epp-fees-02>.
+
+	pepper> check fee example.xyz COMMAND [CURRENCY [PERIOD]]
+
+C<COMMAND> must be one of: C<create>, C<renew>, C<transfer>, C<restore>.
+C<CURRENCY> is OPTIONAL but if provided, must be a three-character currency code.
+C<PERIOD> is also OPTIONAL but if provided, must be an integer between 1 and 99.
 
 =head2 CREATING DOMAIN AND CONTACT OBJECTS
 
