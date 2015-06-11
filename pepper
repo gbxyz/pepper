@@ -19,6 +19,7 @@ GetOptions($opt,
 	'timeout=i',
 	'help',
 	'exec=s',
+	'insecure',
 );
 
 my $handlers = {
@@ -47,6 +48,8 @@ my $handlers = {
 	'renew'		=> \&handle_renew,
 	'create'	=> \&handle_create,
 	'edit'		=> \&handle_edit,
+	'cert'		=> \&handle_cert,
+	'key'		=> \&handle_key,
 };
 
 if ($opt->{'help'}) {
@@ -60,6 +63,7 @@ my $epp = Net::EPP::Simple->new(
 	'debug'		=> ($opt->{'exec'} eq ''),
 	'login'		=> undef,
 	'reconnect'	=> 0,
+	'verify'	=> ($opt->{'insecure'} ? undef : 1),
 );
 
 my $term = Term::ReadLine->new('pepper');
@@ -437,7 +441,7 @@ sub handle_clone {
 		return handle_contact_clone($old, $new);
 
 	} elsif (lc($type) eq 'domain') {
-		return handle_contact_domain($old, $new);
+		return handle_domain_clone($old, $new);
 
 	} else {
 		error("Unsupported object type '$type'");
@@ -456,7 +460,7 @@ sub handle_contact_clone {
 	return $epp->create_contact($info);
 }
 
-sub handle_contact_domain {
+sub handle_domain_clone {
 	my ($old, $new) = @_;
 
 	my $info = $epp->domain_info($old) || return;
@@ -555,6 +559,19 @@ sub handle_edit {
 	}
 }
 
+sub handle_key {
+	my ($key, $pass) = @_;
+	$epp->{'key'} = $key;
+	$epp->{'passphrase'} = $pass;
+	note("Using '$key' as private key");
+}
+
+sub handle_cert {
+	my $cert = shift;
+	$epp->{'cert'} = $cert;
+	note("Using '$cert' as certificate");
+}
+
 sub note {
 	my ($fmt, @args) = @_;
 	my $msg = sprintf($fmt, @args);
@@ -611,6 +628,10 @@ Specify password.
 =item C<--exec=COMMAND>
 
 Specify command to execute. May be used multiple times. See L<SYNTAX> for more details.
+
+=item C<--insecure>
+
+Disable SSL certificate checks.
 
 =back
 
