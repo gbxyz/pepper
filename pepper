@@ -8,6 +8,7 @@ use Getopt::Long;
 use Text::ParseWords;
 use Pod::Usage;
 use File::Temp qw(tmpnam);
+use Mozilla::CA;
 use strict;
 
 my $opt = {};
@@ -64,6 +65,7 @@ my $epp = Net::EPP::Simple->new(
 	'login'		=> undef,
 	'reconnect'	=> 0,
 	'verify'	=> ($opt->{'insecure'} ? undef : 1),
+	'ca_file'	=> Mozilla::CA::SSL_ca_file(),
 );
 
 my $term = Term::ReadLine->new('pepper');
