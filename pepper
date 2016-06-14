@@ -788,7 +788,7 @@ a claims check as per Section 3.1.1. of L<draft-ietf-eppext-launchphase>.
 
 	pepper> check claims example.xyz
 
-=head 3 FEE CHECK
+=head3 FEE CHECK
 
 The following command will extend the standard E<lt>checkE<gt> command to perform
 a fee check as per Section 3.1.1. of L<draft-brown-epp-fees-02>.
@@ -811,6 +811,24 @@ Syntax:
 
 Create a host object with the specified C<HOSTNAME>. IP address may also be
 specified: IPv4 and IPv6 addresses are automatically detected.
+
+=head1 INSTALLATION
+
+Pepper requires that the following Perl modules be installed:
+
+=over
+
+=item C<Term::ReadLine::Gnu> (and C<Term::ReadLine>)
+
+=item C<Net::EPP::Simple> (from C<Net::EPP>, in turn requires C<IO::Socket::SSL> and C<XML::LibXML>)
+
+=item C<Text::ParseWords>
+
+=item C<Mozilla::CA>
+
+=back
+
+This can be installed using one of the various CPAN clients, or as packages from your operating system vendor.
 
 =head1 LICENSE
 

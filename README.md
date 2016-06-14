@@ -34,6 +34,10 @@ Pepper is a command-line client for the EPP protocol. It's written in Perl and u
 
     Specify command to execute. May be used multiple times. See [SYNTAX](https://metacpan.org/pod/SYNTAX) for more details.
 
+- `--insecure`
+
+    Disable SSL certificate checks.
+
 # SYNTAX
 
 Once running, Pepper provides a simple command line interface. The available commands are listed below:
@@ -173,12 +177,14 @@ Pepper provides limited support for the the launch and fee extensions:
 
 ### CLAIMS CHECK
 
-The following command will extend the standard <check> command to perform
+The following command will extend the standard &lt;check> command to perform
 a claims check as per Section 3.1.1. of [draft-ietf-eppext-launchphase](https://metacpan.org/pod/draft-ietf-eppext-launchphase).
 
         pepper> check claims example.xyz
 
-The following command will extend the standard <check> command to perform
+### FEE CHECK
+
+The following command will extend the standard &lt;check> command to perform
 a fee check as per Section 3.1.1. of [draft-brown-epp-fees-02](https://metacpan.org/pod/draft-brown-epp-fees-02).
 
         pepper> check fee example.xyz COMMAND [CURRENCY [PERIOD]]
@@ -200,16 +206,19 @@ Syntax:
 Create a host object with the specified `HOSTNAME`. IP address may also be
 specified: IPv4 and IPv6 addresses are automatically detected.
 
+# INSTALLATION
+
+Pepper requires that the following Perl modules be installed:
+
+- `Term::ReadLine::Gnu` (and `Term::ReadLine`)
+- `Net::EPP::Simple` (from `Net::EPP`, in turn requires `IO::Socket::SSL` and `XML::LibXML`)
+- `Text::ParseWords`
+- `Mozilla::CA`
+
+This can be installed using one of the various CPAN clients, or as packages from your operating system vendor.
+
 # LICENSE
 
 Copyright CentralNic Group plc.
 
 This program is Free Software; you can use it and/or modify it under the same terms as Perl itself.
-
-# POD ERRORS
-
-Hey! __The above document had some coding errors, which are explained below:__
-
-- Around line 768:
-
-    Unknown directive: =head
