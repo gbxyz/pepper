@@ -51,6 +51,7 @@ my $handlers = {
 	'edit'		=> \&handle_edit,
 	'cert'		=> \&handle_cert,
 	'key'		=> \&handle_key,
+	'restore'	=> \&handle_restore,
 };
 
 if ($opt->{'help'}) {
@@ -574,6 +575,27 @@ sub handle_cert {
 	note("Using '$cert' as certificate");
 }
 
+sub handle_restore {
+	my $domain = shift;
+
+	my $frame = Net::EPP::Frame::Command::Update::Domain->new;
+	$frame->setDomain($domain);
+
+	my $ext = $frame->getNode('extension');
+	if (!defined($ext)) {
+		$ext = $frame->createElementNS(undef, 'extension');
+		$frame->getNode('command')->insertBefore($ext, $frame->clTRID);
+	}
+
+	my $RGP_URN = 'urn:ietf:params:xml:ns:rgp-1.0';
+
+	my $upd = $ext->addNewChild($RGP_URN, 'rgp:update');
+	my $restore = $upd->addNewChild($RGP_URN, 'rgp:restore');
+	$restore->setAttribute('op', 'request');
+
+	return $epp->request($frame);
+}
+
 sub note {
 	my ($fmt, @args) = @_;
 	my $msg = sprintf($fmt, @args);
@@ -734,6 +756,10 @@ delete an object (C<TYPE> is one of C<domain>, C<host>, C<contact>)
 =item C<renew DOMAIN PERIOD>
 
 renew a domain (1 year by default)
+
+=item C<restore DOMAIN>
+
+submit an RGP restore request for a domain
 
 =item C<create host PARAMS>
 

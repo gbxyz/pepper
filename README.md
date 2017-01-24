@@ -134,6 +134,10 @@ Once running, Pepper provides a simple command line interface. The available com
 
     renew a domain (1 year by default)
 
+- `restore DOMAIN`
+
+    submit an RGP restore request for a domain
+
 - `create host PARAMS`
 
     create a host object. See ["CREATING HOST OBJECTS"](#creating-host-objects) for more information.
