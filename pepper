@@ -659,6 +659,10 @@ Specify command to execute. May be used multiple times. See L<SYNTAX> for more d
 
 Disable SSL certificate checks.
 
+=item C<--lang=LANG>
+
+Specify language.
+
 =back
 
 =head1 SYNTAX
