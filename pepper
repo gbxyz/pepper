@@ -21,6 +21,7 @@ GetOptions($opt,
 	'help',
 	'exec=s',
 	'insecure',
+	'lang=s',
 );
 
 my $handlers = {
@@ -67,6 +68,7 @@ my $epp = Net::EPP::Simple->new(
 	'reconnect'	=> 0,
 	'verify'	=> ($opt->{'insecure'} ? undef : 1),
 	'ca_file'	=> Mozilla::CA::SSL_ca_file(),
+	'lang'		=> ($opt->{'lang'} ? $opt->{'lang'} : 'en'),
 );
 
 my $term = Term::ReadLine->new('pepper');
