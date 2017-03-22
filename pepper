@@ -607,6 +607,7 @@ sub note {
 sub error {
 	my ($fmt, @args) = @_;
 	note("Error: ".$fmt, @args);
+	return undef;
 }
 
 sub fatal {
