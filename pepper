@@ -165,8 +165,7 @@ sub handle_ssl {
 		note('SSL disabled');
 
 	} else {
-		error("Invalid SSL mode '%s'", $_[0]);
-		return undef;
+		return error("Invalid SSL mode '%s'", $_[0]);
 
 	}
 	return 1;
@@ -186,8 +185,7 @@ sub handle_port {
 
 sub handle_connect {
 	if ($epp->{'host'} eq '') {
-		error('No host specified');
-		return undef;
+		return error('No host specified');
 
 	} else {
 		note('Connecting to %s', $epp->{'host'});
@@ -198,12 +196,10 @@ sub handle_connect {
 
 sub handle_credentials {
 	if ($_[0] eq '') {
-		error('Missing client ID');
-		return undef;
+		return error('Missing client ID');
 
 	} elsif ($_[1] eq '') {
-		error('Missing password');
-		return undef;
+		return error('Missing password');
 
 	} else {
 		handle_id($_[0]);
@@ -225,12 +221,10 @@ sub handle_pw {
 
 sub handle_login {
 	if ($epp->{'host'} eq '') {
-		error('No host specified');
-		return undef;
+		return error('No host specified');
 
 	} elsif ($epp->{'user'} eq '' || $epp->{'pass'} eq '') {
-		error('No credentials specified');
-		return undef;
+		return error('No credentials specified');
 
 	} elsif (!defined($epp->{'connected'})) {
 		return handle_connect() && handle_login();
@@ -243,8 +237,7 @@ sub handle_login {
 
 sub handle_logout {
 	if (!defined($epp->{'authenticated'})) {
-		error('Not logged in');
-		return undef;
+		return error('Not logged in');
 
 	} else {
 		note('logging out');
@@ -274,8 +267,7 @@ sub handle_check {
 		return $epp->check_contact($id);
 
 	} else {
-		error("Unsupported object type '$type'");
-		return undef;
+		return error("Unsupported object type '$type'");
 
 	}
 }
@@ -316,10 +308,7 @@ sub handle_fee_check {
 		$ok = 1 if ($el->textContent eq $fee_ns);
 	}
 
-	if (!$ok) {
-		error("Server does not support the version of the fee extension that I support!");
-		return undef;
-	}
+	return error("Server does not support the version of the fee extension that I support!") if (!$ok);
 
 	my $domain = $frame->createElementNS($fee_ns, 'domain');
 	foreach my $name (qw(name currency command period)) {
@@ -353,8 +342,7 @@ sub handle_info {
 		return $epp->contact_info($id);
 
 	} else {
-		error("Unsupported object type '$type'");
-		return undef;
+		return error("Unsupported object type '$type'");
 
 	}
 }
@@ -497,8 +485,7 @@ sub handle_delete {
 		return $epp->delete_contact($id);
 
 	} else {
-		error("Unsupported object type '$type'");
-		return undef;
+		return error("Unsupported object type '$type'");
 
 	}
 }
