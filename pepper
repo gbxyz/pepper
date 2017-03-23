@@ -53,6 +53,7 @@ my $handlers = {
 	'cert'		=> \&handle_cert,
 	'key'		=> \&handle_key,
 	'restore'	=> \&handle_restore,
+	'update'	=> \&handle_update,
 };
 
 if ($opt->{'help'}) {
@@ -585,6 +586,94 @@ sub handle_restore {
 	return $epp->request($frame);
 }
 
+sub handle_update {
+	my $type = shift;
+	if ($type eq 'domain') {
+		return domain_update(@_);
+
+	} elsif ($type eq 'host') {
+		return host_update(@_);
+
+	} elsif ($type eq 'contact') {
+		return contact_update(@_);
+
+	} else {
+		return error("Unsupported object type '$type'");
+
+	}
+}
+
+sub domain_update {
+	error("Domain update not supported yet");
+}
+
+sub host_update {
+	my $frame = Net::EPP::Frame::Command::Update::Host->new;
+
+	$frame->setHost(shift(@_));
+
+	my $changes = {
+		'addr' => [],
+		'status' => [],
+	};
+
+	for (my $i = 0 ; $i < scalar(@_) ; $i++) {
+		my $action	= lc($_[$i]);
+		my $type	= lc($_[++$i]);
+		my $value	= $_[++$i];
+
+		return error("Invalid parameter '$action'") if ($action !~ /^(add|rem|chg)$/);
+		return error("Missing parameter") if (!$type || !$value);
+		return error("Invalid property '$type'") if ($type !~ /^(addr|status|name)$/);
+
+		if ($type eq 'addr') {
+			push(@{$changes->{'addr'}}, [ $action,  $value ]);
+
+		} elsif ($type eq 'status') {
+			push(@{$changes->{'status'}}, [ $action,  $value ]);
+
+		} elsif ($action eq 'chg') {
+			if ($type ne 'name') {
+				return error("You can only change the host name");
+
+			} else {
+				$frame->chgName($value);
+
+			}
+		}
+	}
+
+	# we need to add <addr> elements first
+	foreach my $change (@{$changes->{'addr'}}) {
+		my ($action, $value) = @{$change};
+		if ($action eq 'add') {
+			$frame->addAddr({'ip' => $value, 'version' => ($value =~ /:/ ? 'v6' : 'v4') });
+
+		} else {
+			$frame->remAddr({'ip' => $value, 'version' => ($value =~ /:/ ? 'v6' : 'v4') });
+
+		}
+	}
+
+	# we need to add <status> elements second
+	foreach my $change (@{$changes->{'status'}}) {
+		my ($action, $value) = @{$change};
+		if ($action eq 'add') {
+			$frame->addStatus($value);
+
+		} else {
+			$frame->remStatus($value);
+
+		}
+	}
+
+	return $epp->request($frame);
+}
+
+sub contact_update {
+	error("Contact update not supported yet");
+}
+
 sub note {
 	my ($fmt, @args) = @_;
 	my $msg = sprintf($fmt, @args);
@@ -765,9 +854,37 @@ quit the program (logging out if necessary)
 
 =back
 
+=head2 OBJECT UPDATES
+
+Objects may be updated using the C<update> command.
+
+=head3 Host updates
+
+Syntax:
+
+  update host HOSTNAME CHANGES
+
+The C<CHANGES> argument consists of groups of three values: an action (ie C<add>, C<rem> or C<chg>) followed by a property name (ie C<addr>, C<status> or C<name>) followed by a value.
+
+Examples:
+
+  update ns0.example.com add status clientUpdateProhibited
+
+  update ns0.example.com rem addr 10.0.0.1
+
+  update ns0.example.com chg name ns0.example.net
+
+Multiple changes can be combined in a single command:
+
+  update host ns0.example.com add status clientUpdateProhibited rem addr 10.0.0.1 add addr 1::1 chg name ns0.example.net
+
+=head3 Domain and Contact updates
+
+Not currently implemented.
+
 =head2 OBJECT TRANSFERS
 
-Object transfers may be managed with the transfer command. Usage:
+Object transfers may be managed with the C<transfer> command. Usage:
 
   transfer TYPE OBJECT CMD [AUTHINFO [PERIOD]]
   

@@ -38,6 +38,10 @@ Pepper is a command-line client for the EPP protocol. It's written in Perl and u
 
     Disable SSL certificate checks.
 
+- `--lang=LANG`
+
+    Specify language.
+
 # SYNTAX
 
 Once running, Pepper provides a simple command line interface. The available commands are listed below:
@@ -146,9 +150,37 @@ Once running, Pepper provides a simple command line interface. The available com
 
     quit the program (logging out if necessary)
 
+## OBJECT UPDATES
+
+Objects may be updated using the `update` command.
+
+### Host updates
+
+Syntax:
+
+    update host HOSTNAME CHANGES
+
+The `CHANGES` argument consists of groups of three values: an action (ie `add`, `rem` or `chg`) followed by a property name (ie `addr`, `status` or `name`) followed by a value.
+
+Examples:
+
+    update ns0.example.com add status clientUpdateProhibited
+
+    update ns0.example.com rem addr 10.0.0.1
+
+    update ns0.example.com chg name ns0.example.net
+
+Multiple changes can be combined in a single command:
+
+    update host ns0.example.com add status clientUpdateProhibited rem addr 10.0.0.1 add addr 1::1 chg name ns0.example.net
+
+### Domain and Contact updates
+
+Not currently implemented.
+
 ## OBJECT TRANSFERS
 
-Object transfers may be managed with the transfer command. Usage:
+Object transfers may be managed with the `transfer` command. Usage:
 
     transfer TYPE OBJECT CMD [AUTHINFO [PERIOD]]
     
