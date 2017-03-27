@@ -2,6 +2,50 @@
 # Copyright CentralNic Group plc.
 # This program is Free Software; you can use it and/or modify it under the same
 # terms as Perl itself.
+package Pepper::EPPClient;
+use base qw(Net::EPP::Simple);
+use Data::Dumper;
+
+sub new {
+	my ($package, %params) = @_;
+
+	my $self = $package->SUPER::new(%params);
+
+	$self->{'outfh'} = $params{'outfh'};
+
+	return $self;
+}
+
+sub get_frame {
+	my $self = shift;
+	my $response = $self->SUPER::get_frame;
+	map { $self->{'outfh'}->print(sprintf("S: %s\n", $_)) } split(/\n/, $response->toString(2)) if (!$self->{'quiet'} && $response);
+	return $response;
+}
+
+sub send_frame {
+	my ($self, $frame, $wfcheck) = @_;
+
+	map { $self->{'outfh'}->print(sprintf("C: %s\n", $_)) } split(/\n/, $frame->isa('XML::LibXML::Document') ? $frame->toString(2) : $frame) unless ($self->{'quiet'});;
+
+	return $self->SUPER::send_frame($frame, $wfcheck);
+}
+
+sub request {
+	my ($self, $frame) = @_;
+
+	my $response = $self->SUPER::request($frame);
+
+	if (!$response) {
+		$self->{'outfh'}->print(sprintf("%04d %s\n", $Net::EPP::Simple::Code, $Net::EPP::Simple::Error));
+
+	} else {
+		return $response;
+
+	}
+}
+
+package main;
 use Term::ReadLine;
 use Net::EPP::Simple;
 use Getopt::Long;
@@ -11,7 +55,12 @@ use File::Temp qw(tmpnam);
 use Mozilla::CA;
 use strict;
 
-my $opt = {};
+my $opt = {
+	'port'		=> 700,
+	'timeout'	=> 15,
+	'lang'		=> 'en',
+};
+
 GetOptions($opt,
 	'host=s',
 	'user=s',
@@ -22,6 +71,7 @@ GetOptions($opt,
 	'exec=s',
 	'insecure',
 	'lang=s',
+	'debug',
 );
 
 my $handlers = {
@@ -43,7 +93,6 @@ my $handlers = {
 	'send'		=> \&handle_send,
 	'BEGIN'		=> \&handle_begin,
 	'exit'		=> \&handle_exit,
-	'keepalive'	=> \&handle_keepalive,
 	'transfer'	=> \&handle_transfer,
 	'clone'		=> \&handle_clone,
 	'delete'	=> \&handle_delete,
@@ -61,17 +110,6 @@ if ($opt->{'help'}) {
 	exit;
 }
 
-my $epp = Net::EPP::Simple->new(
-	'host'		=> '',
-	'connect'	=> undef,
-	'debug'		=> ($opt->{'exec'} eq ''),
-	'login'		=> undef,
-	'reconnect'	=> 0,
-	'verify'	=> ($opt->{'insecure'} ? undef : 1),
-	'ca_file'	=> Mozilla::CA::SSL_ca_file(),
-	'lang'		=> ($opt->{'lang'} ? $opt->{'lang'} : 'en'),
-);
-
 my $term = Term::ReadLine->new('pepper');
 my $prompt = 'pepper> ';
 my $out = $term->OUT || \*STDOUT;
@@ -84,23 +122,38 @@ note('Welcome to pepper!');
 
 note('For best results, install Term::ReadLine::Gnu') if ('Term::ReadLine::Gnu' ne $term->ReadLine);
 
+my $epp = Pepper::EPPClient->new(
+	'host'		=> '',
+	'connect'	=> undef,
+	'debug'		=> $opt->{'debug'},
+	'login'		=> undef,
+	'reconnect'	=> 0,
+	'verify'	=> ($opt->{'insecure'} ? undef : 1),
+	'ca_file'	=> Mozilla::CA::SSL_ca_file(),
+	'lang'		=> ($opt->{'lang'} ? $opt->{'lang'} : 'en'),
+	'outfh'		=> $out,
+);
+
 execute_command(sprintf('timeout %d',	$opt->{'timeout'}))	if ($opt->{'timeout'});
 execute_command(sprintf('port %d',	$opt->{'port'}))	if ($opt->{'port'});
 execute_command(sprintf('host %s',	$opt->{'host'}))	if ($opt->{'host'});
 execute_command(sprintf('id %s',	$opt->{'user'}))	if ($opt->{'user'});
 execute_command(sprintf('pw %s',	$opt->{'pass'}))	if ($opt->{'pass'});
 
-execute_command('connect') if ($epp->{'host'} ne '');
-execute_command('login') if ($epp->{'user'} ne '' && $epp->{'pass'} ne '');
+if ($epp->{'user'} ne '' && $epp->{'pass'} ne '') {
+	execute_command('login');
+
+} elsif ($epp->{'host'} ne '') {
+	execute_command('connect');
+
+}
 
 if ($opt->{'exec'} ne '') {
-	if (!$epp->{'authenticated'}) {
+	if (!$epp->authenticated) {
 		fatal('not logged in');
 
 	} else {
-		$epp->{'debug'} = 1;
 		execute_command($opt->{'exec'});
-		$epp->{'debug'} = 0;
 		exit;
 
 	}
@@ -109,6 +162,7 @@ if ($opt->{'exec'} ne '') {
 my $last;
 while (1) {
 	my $command = $term->readline($prompt);
+	alarm(0);
 	if (!defined($command)) {
 		last;
 
@@ -127,10 +181,8 @@ while (1) {
 
 $term->WriteHistory($histfile);
 
-$epp->logout if ($epp->{'connected'} && $epp->{'authenticated'});
-$epp->disconnect if ($epp->{'connected'});
-
-$epp->{'debug'} = 0;
+$epp->logout if ($epp->connected && $epp->authenticated);
+$epp->disconnect if ($epp->connected);
 
 note('bye!');
 
@@ -190,8 +242,19 @@ sub handle_connect {
 
 	} else {
 		note('Connecting to %s', $epp->{'host'});
-		return $epp->_connect(undef);
 
+		$epp->{'quiet'} = 1;
+		my $result = $epp->_connect(undef);
+		$epp->{'quiet'} = 0;
+
+		if ($result) {
+			note("Connected OK. Type 'hello' to see the greeting frame.");
+
+		} else {
+			error("Unable to connect: %s", $Net::EPP::Simple::Message);
+
+		}
+		return $result;
 	}
 }
 
@@ -217,32 +280,44 @@ sub handle_id {
 
 sub handle_pw {
 	$epp->{'pass'} = shift;
-	note("Password set to '%s'", $epp->{'pass'});
+	note("Password set to '%s'", ('*' x length($epp->{'pass'})));
 }
 
 sub handle_login {
+	my $verbose = shift;
 	if ($epp->{'host'} eq '') {
 		return error('No host specified');
 
 	} elsif ($epp->{'user'} eq '' || $epp->{'pass'} eq '') {
 		return error('No credentials specified');
 
-	} elsif (!defined($epp->{'connected'})) {
+	} elsif (!$epp->connected) {
 		return handle_connect() && handle_login();
 
+	} elsif ($epp->authenticated) {
+		return error('Already logged in');
+
 	} else {
-		return $epp->_login;
+		$epp->{'quiet'} = ($verbose ? 0 : 1);
+		my $result = $epp->_login;
+		$epp->{'quiet'} = 0;
+		note("%04d %s", $Net::EPP::Simple::Code, $Net::EPP::Simple::Message);
+		return $result;
 
 	}
 }
 
 sub handle_logout {
-	if (!defined($epp->{'authenticated'})) {
+	if (!$epp->authenticated) {
 		return error('Not logged in');
 
 	} else {
 		note('logging out');
-		return $epp->logout;
+		$epp->{'quiet'} = 1;
+		my $result = $epp->logout;
+		$epp->{'quiet'} = 0;
+		note("%04d %s", $Net::EPP::Simple::Code, $Net::EPP::Simple::Message);
+		return $result;
 	}
 }
 
@@ -332,15 +407,16 @@ sub handle_fee_check {
 }
 
 sub handle_info {
-	my ($type, $id) = @_;
+	my ($type, $id, $authInfo, $opt) = @_;
 	if ($type eq 'domain') {
-		return $epp->domain_info($id);
+		$opt = $opt || 'all';
+		return $epp->domain_info($id, $authInfo, undef, $opt);
 
 	} elsif ($type eq 'host') {
 		return $epp->host_info($id);
 
 	} elsif ($type eq 'contact') {
-		return $epp->contact_info($id);
+		return $epp->contact_info($id, $authInfo, $opt);
 
 	} else {
 		return error("Unsupported object type '$type'");
@@ -391,31 +467,10 @@ sub handle_help {
 	);
 }
 
-sub handle_keepalive {
-	$epp->{'keepalive'} = int(shift);
-	alarm(0);
-	if ($epp->{'keepalive'} < 1) {
-		note('disabling keepalive');
-		undef($SIG{'ALRM'});
-
-	} else {
-		note('setting keepalive interval to %ds', $epp->{'keepalive'});
-		$SIG{'ALRM'} = sub {
-			my $was = $epp->{'debug'};
-			$epp->{debug} = 0;
-			$epp->ping if ($epp->{'connected'});
-			$epp->{'debug'} = $was;
-			alarm($epp->{'keepalive'});
-		};
-		alarm($epp->{'keepalive'});
-	}
-}
-
 sub handle_exit {
-	$epp->logout if ($epp->{'authenticated'});
-	$epp->disconnect if ($epp->{'connected'});
+	$epp->logout if ($epp->authenticated);
+	$epp->disconnect if ($epp->connected);
 	note('bye!');
-	$epp->{'debug'} = 0;
 	exit;
 }
 
@@ -677,7 +732,7 @@ sub contact_update {
 sub note {
 	my ($fmt, @args) = @_;
 	my $msg = sprintf($fmt, @args);
-	print $msg."\n";
+	print $out $msg."\n";
 }
 
 sub error {
@@ -819,10 +874,6 @@ begin inputting a frame to send to the server, end with "C<END>"
 =item C<edit>
 
 Invoke C<$EDITOR> and send the resulting file
-
-=item C<keepalive SECS>
-
-keep the session alive by pinging the server every C<SECS> seconds. Use zero to cancel
 
 =item C<transfer PARAMS>
 

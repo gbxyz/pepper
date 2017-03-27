@@ -118,10 +118,6 @@ Once running, Pepper provides a simple command line interface. The available com
 
     Invoke `$EDITOR` and send the resulting file
 
-- `keepalive SECS`
-
-    keep the session alive by pinging the server every `SECS` seconds. Use zero to cancel
-
 - `transfer PARAMS`
 
     object transfer management See ["OBJECT TRANSFERS"](#object-transfers) for more information.
