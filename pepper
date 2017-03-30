@@ -2,16 +2,26 @@
 # Copyright CentralNic Group plc.
 # This program is Free Software; you can use it and/or modify it under the same
 # terms as Perl itself.
+
+#
+# Pepper::EPPClient is our own wrapper around Net::EPP::Simple
+#
 package Pepper::EPPClient;
 use base qw(Net::EPP::Simple);
-use Data::Dumper;
+use XML::Parser;
+use strict;
 
 sub new {
 	my ($package, %params) = @_;
 
 	my $self = $package->SUPER::new(%params);
 
-	$self->{'outfh'} = $params{'outfh'};
+	$self->{'outfh'} = $Pepper::Higlighter::fh = $params{'outfh'};
+
+	$self->{'pretty_parser'} = XML::Parser->new(
+		'Style' => 'Stream',
+		'Pkg' => 'Pepper::Higlighter',
+	);
 
 	return $self;
 }
@@ -19,14 +29,14 @@ sub new {
 sub get_frame {
 	my $self = shift;
 	my $response = $self->SUPER::get_frame;
-	map { $self->{'outfh'}->print(sprintf("S: %s\n", $_)) } split(/\n/, $response->toString(2)) if (!$self->{'quiet'} && $response);
+	$self->{'pretty_parser'}->parse($response->toString(2)) if (!$self->{'quiet'} && $response && ($response->isa('XML::LibXML::Document') || $response->isa('Net::EPP::Frame::Response')));
 	return $response;
 }
 
 sub send_frame {
 	my ($self, $frame, $wfcheck) = @_;
 
-	map { $self->{'outfh'}->print(sprintf("C: %s\n", $_)) } split(/\n/, $frame->isa('XML::LibXML::Document') ? $frame->toString(2) : $frame) unless ($self->{'quiet'});;
+	$self->{'pretty_parser'}->parse($frame->toString(2)) if (!$self->{'quiet'} && ($frame->isa('XML::LibXML::Document') || $frame->isa('Net::EPP::Frame')));
 
 	return $self->SUPER::send_frame($frame, $wfcheck);
 }
