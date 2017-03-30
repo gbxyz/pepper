@@ -41,23 +41,8 @@ sub send_frame {
 	return $self->SUPER::send_frame($frame, $wfcheck);
 }
 
-sub request {
-	my ($self, $frame) = @_;
-
-	my $response = $self->SUPER::request($frame);
-
-	if (!$response) {
-		$self->{'outfh'}->print(sprintf("%s%04d%s %s\n", color($Net::EPP::Simple::Code < 2000 ? 'green' : 'red'), $Net::EPP::Simple::Code, color('reset'), $Net::EPP::Simple::Message));
-
-	} else {
-		return $response;
-
-	}
-}
-
 package Pepper::Higlighter;
 use Term::ANSIColor;
-use Data::Dumper;
 use strict;
 use HTML::Entities qw(encode_entities_numeric);
 use vars qw($fh);
@@ -112,6 +97,7 @@ GetOptions($opt,
 	'host=s',
 	'user=s',
 	'pass=s',
+	'newpw=s',
 	'port=i',
 	'timeout=i',
 	'help',
@@ -119,6 +105,8 @@ GetOptions($opt,
 	'insecure',
 	'lang=s',
 	'debug',
+	'cert=s',
+	'key=s',
 );
 
 my $handlers = {
@@ -129,6 +117,7 @@ my $handlers = {
 	'credentials'	=> \&handle_credentials,
 	'id'		=> \&handle_id,
 	'pw'		=> \&handle_pw,
+	'newpw'		=> \&handle_newpw,
 	'connect'	=> \&handle_connect,
 	'login'		=> \&handle_login,
 	'logout'	=> \&handle_logout,
@@ -186,6 +175,9 @@ execute_command(sprintf('port %d',	$opt->{'port'}))	if ($opt->{'port'});
 execute_command(sprintf('host %s',	$opt->{'host'}))	if ($opt->{'host'});
 execute_command(sprintf('id %s',	$opt->{'user'}))	if ($opt->{'user'});
 execute_command(sprintf('pw %s',	$opt->{'pass'}))	if ($opt->{'pass'});
+execute_command(sprintf('newpw %s',	$opt->{'newpw'}))	if ($opt->{'newpw'});
+execute_command(sprintf('cert %s',	$opt->{'cert'}))	if ($opt->{'cert'});
+execute_command(sprintf('key %s',	$opt->{'key'}))		if ($opt->{'key'});
 
 if ($epp->{'user'} ne '' && $epp->{'pass'} ne '') {
 	execute_command('login');
@@ -208,8 +200,9 @@ if ($opt->{'exec'} ne '') {
 
 my $last;
 while (1) {
+	$prompt = sprintf('pepper[%s@%s]> ', $epp->{'user'}, $epp->{'host'}) if ($epp->authenticated);
+
 	my $command = $term->readline($prompt);
-	alarm(0);
 	if (!defined($command)) {
 		last;
 
@@ -231,7 +224,7 @@ $term->WriteHistory($histfile);
 handle_logout() if ($epp->connected && $epp->authenticated);
 $epp->disconnect if ($epp->connected);
 
-note('bye!');
+note('Bye!');
 
 sub execute_command {
 	my $line = shift;
@@ -304,7 +297,7 @@ sub handle_connect {
 		return error('No host specified');
 
 	} else {
-		note('Connecting to %s', $epp->{'host'});
+		note('Connecting to %s...', $epp->{'host'});
 
 		$epp->{'quiet'} = 1;
 		my $result = $epp->_connect(undef);
@@ -356,6 +349,17 @@ sub handle_pw {
 	}
 }
 
+sub handle_newpw {
+	if ($epp->authenticated) {
+		return error("Already authenticated");
+
+	} else {
+		$epp->{'newPW'} = shift;
+		note("New password set to '%s'", ('*' x length($epp->{'newPW'})));
+
+	}
+}
+
 sub handle_login {
 	my $verbose = shift;
 	if (!$epp->connected) {
@@ -371,10 +375,12 @@ sub handle_login {
 		return error('No credentials specified');
 
 	} else {
+		note("Attempting to login as '%s'...", $epp->{'user'});
 		$epp->{'quiet'} = ($verbose ? 0 : 1);
 		my $result = $epp->_login;
 		$epp->{'quiet'} = 0;
 		note("%s%04d%s %s", color($Net::EPP::Simple::Code < 2000 ? 'green' : 'red'), $Net::EPP::Simple::Code, color('reset'), $Net::EPP::Simple::Message);
+		note('Logged in OK!') if ($result);
 		return $result;
 	}
 }
@@ -724,8 +730,17 @@ sub handle_edit {
 
 	} else {
 		my $file = tmpnam();
-		if (0 != system(sprintf("%s %s", $ENV{'EDITOR'}, quotemeta($file)))) {
-			error("$ENV{'EDITOR'} exited abnormally");
+
+		open(FILE, ">$file");
+		print FILE Net::EPP::Frame->new('command')->toString(2);
+		close(FILE);
+
+		my $cmd = ($ENV{'EDITOR'} || '/usr/bin/vi');
+		my ($cmd, @args) = split(/[ \t]+/, $cmd);
+		push(@args, $file);
+
+		if (0 != system($cmd, @args)) {
+			error("$cmd exited abnormally");
 
 		} else {
 			if (!-e $file || 0 == (stat($file))[7]) {
@@ -737,7 +752,7 @@ sub handle_edit {
 				my $frame = <FILE>;
 				close(FILE);
 				unlink($file);
-				$epp->request($frame);
+				return $epp->request($frame);
 			}
 		}
 	}
@@ -997,203 +1012,210 @@ Pepper is a command-line client for the EPP protocol. It's written in Perl and u
 
 =head1 USAGE
 
-	pepper [--host=HOST] [--port=PORT] [--timeout=TIMEOUT] [--user=USER] [--pass=PASS] [--exec=COMMAND]
+	pepper [OPTIONS]
+
+Available command-line options:
 
 =over
 
-=item C<--host=HOST>
+=item C<--host=HOST> - sets the host to connect to.
 
-Specify the host name to connect to.
+=item C<--port=PORT> - sets the port. Defaults to 700.
 
-=item C<--port=PORT>
+=item C<--timeout=TIMEOUT> - sets the timeout. Defaults to 3.
 
-Specify the port. Defaults to 700.
+=item C<--user=USER> - sets the client ID.
 
-=item C<--timeout=TIMEOUT>
+=item C<--pass=PASS> - sets the client password.
 
-Specify the timeout. Defaults to 3.
+=item C<--cert=FILE> - specify the client certificate to use to connect.
 
-=item C<--user=USER>
+=item C<--key=FILE> - specify the private key for the client certificate.
 
-Specify user ID.
+=item C<--exec=COMMAND> - specify a command to execute. If not provided, pepper goes into interactive mode.
 
-=item C<--pass=PASS>
+=item C<--insecure> - disable SSL certificate checks.
 
-Specify password.
+=item C<--lang=LANG> - set the language when logging in.
 
-=item C<--exec=COMMAND>
-
-Specify command to execute. May be used multiple times. See L<SYNTAX> for more details.
-
-=item C<--insecure>
-
-Disable SSL certificate checks.
-
-=item C<--lang=LANG>
-
-Specify language.
+=item C<--debug> - debug mode, makes C<Net::EPP::Simple> verbose.
 
 =back
 
 =head1 SYNTAX
 
-Once running, Pepper provides a simple command line interface. The available commands are listed below:
+Once running, Pepper provides a simple command line interface. The available commands are listed below. You can use the C<help> command to view this list when pepper is running.
+
+=head2 Connection Management
 
 =over
 
-=item C<help>
+=item C<host HOST> - sets the host to connect to.
 
-display manual
+=item C<port PORT> - sets the port. Defaults to 700.
 
-=item C<host HOST>
+=item C<ssl on|off> - enable/disable SSL (default is on)
 
-set hostname
+=item C<key FILE> - sets the private key
 
-=item C<port PORT>
+=item C<cert FILE> - sets the client certificate.
 
-set port (defaults to 700)
+=item C<timeout TIMEOUT> - sets the timeout
 
-=item C<ssl on|off>
+=item C<connect> - connect to the server.
 
-enable/disable SSL (defaults to on)
+=item C<hello> - gets the greeting from server.
 
-=item C<timeout TIMEOUT>
-
-set timeout (default 5 seconds)
-
-=item C<id USER>
-
-set username
-
-=item C<pw PASS>
-
-set password
-
-=item C<connect>
-
-connect to server
-
-=item C<login>
-
-log in
-
-=item C<logout>
-
-log out
-
-=item C<hello>
-
-retrieve greeting from server
-
-=item C<poll req>
-
-request most recent poll message
-
-=item C<poll ack ID>
-
-acknowledge message C<ID>
-
-=item C<check TYPE OBJECT>
-
-check availability of object (C<TYPE> is one of C<domain>, C<host>, C<contact>, C<claims>, C<fee>). See L<CLAIMS AND FEE CHECKS> for more information about the latter two.
-
-=item C<info TYPE OBJECT>
-
-retrieve object information (C<TYPE> is one of C<domain>, C<host>, C<contact>)
-
-=item C<send FILE>
-
-send the contents of C<FILE>
-
-=item C<BEGIN>
-
-begin inputting a frame to send to the server, end with "C<END>"
-
-=item C<edit>
-
-Invoke C<$EDITOR> and send the resulting file
-
-=item C<transfer PARAMS>
-
-object transfer management See L<OBJECT TRANSFERS> for more information.
-
-=item C<clone TYPE OLD NEW>
-
-clone a domain or contact object C<OLD> into a new object identified by C<NEW> (C<TYPE> is one of C<domain>, C<contact>)
-
-=item C<delete TYPE ID>
-
-delete an object (C<TYPE> is one of C<domain>, C<host>, C<contact>)
-
-=item C<renew DOMAIN PERIOD [EXPDATE]>
-
-renew a domain (1 year by default). If you do not provide the C<CUREXPDATE> argument, pepper will perform an C<E<lt>infoE<gt>> command to get it from the server.
-
-=item C<restore DOMAIN>
-
-submit an RGP restore request for a domain
-
-=item C<create host PARAMS>
-
-create a host object. See L<CREATING HOST OBJECTS> for more information.
-
-=item C<exit>
-
-quit the program (logging out if necessary)
+=item C<exit> - quit the program (logging out if necessary)
 
 =back
 
-=head2 OBJECT UPDATES
+=head2 Session Management
+
+=over
+
+=item C<id USER> - sets the client ID.
+
+=item C<pw PASS> - sets the client password.
+
+=item C<login> - log in.
+
+=item C<logout> - log out.
+
+=item C<poll req> - requests the most recent poll message.
+
+=item C<poll ack ID> - acknowledge the poll message with ID C<ID>.
+
+=back
+
+=head2 Query Commands
+
+=over
+
+=item C<check TYPE OBJECT> - checks the availability of an object. C<TYPE> is one of C<domain>, C<host>, C<contact>, C<claims> or C<fee>. See L<Claims and fee Checks> for more information about the latter two.
+
+=item C<info TYPE OBJECT> - get object information. C<TYPE> is one of C<domain>, C<host>, C<contact>.
+
+=back
+
+=head2 Transform Commands
+
+=over
+
+=item C<create host PARAMS> - create a host object. See L<Creating Host Objects> for more information.
+
+=item C<clone TYPE OLD NEW> - clone a domain or contact object C<OLD> into a new object identified by C<NEW>. C<TYPE> is one of C<domain> or C<contact>.
+
+=item C<update TYPE CHANGES> - update an object. C<TYPE> is one of C<domain>, C<host>, or C<contact>. See L<Object Updates> for further information.
+
+=item C<renew DOMAIN PERIOD [EXDATE]> - renew a domain (1 year by default). If you do not provide the C<EXDATE> argument, pepper will perform an C<E<lt>infoE<gt>> command to get it from the server.
+
+=item C<transfer PARAMS> - object transfer management See L<Object Transfers> for more information.
+
+=item C<delete TYPE ID> - delete an object. C<TYPE> is one of C<domain>, C<host>, or C<contact>.
+
+=item C<restore DOMAIN> - submit an RGP restore request for a domain.
+
+=back
+
+=head2 Miscellaneous Commands
+
+=over
+
+=item C<send FILE> - send the contents of C<FILE>.
+
+=item C<BEGIN> - begin inputting a frame to send to the server, end with "C<END>".
+
+=item C<edit> - Invoke C<$EDITOR> and send the resulting file.
+
+=back
+
+=head2 Claims and fee Checks
+
+Pepper provides limited support for the the launch and fee extensions:
+
+=head3 Claims Check
+
+The following command will extend the standard E<lt>checkE<gt> command to perform
+a claims check as per Section 3.1.1. of L<draft-ietf-eppext-launchphase>.
+
+	pepper> check claims example.xyz
+
+=head3 Fee Check
+
+The following command will extend the standard E<lt>checkE<gt> command to perform
+a fee check as per Section 3.1.1. of L<draft-brown-epp-fees-02>.
+
+	pepper> check fee example.xyz COMMAND [CURRENCY [PERIOD]]
+
+C<COMMAND> must be one of: C<create>, C<renew>, C<transfer>, or C<restore>.
+C<CURRENCY> is OPTIONAL but if provided, must be a three-character currency code.
+C<PERIOD> is also OPTIONAL but if provided, must be an integer between 1 and 99.
+
+=head2 Creating Domain and Contact Objects
+
+Domain and contact objects can currently only be created using the C<clone> command.
+
+=head2 Creating Host Objects
+
+Syntax:
+
+	create host HOSTNAME [IP [IP [IP [...]]]]
+
+Create a host object with the specified C<HOSTNAME>. IP address may also be
+specified: IPv4 and IPv6 addresses are automatically detected.
+
+=head2 Object Updates
 
 Objects may be updated using the C<update> command.
 
 =head3 Domain Updates
 
-  update domain HOSTNAME CHANGES
+	update domain DOMAIN CHANGES
 
 The C<CHANGES> argument consists of groups of three values: an action (ie C<add>, C<rem> or C<chg>), followed by a property name (e.g. C<ns>, a contact type (such as C<admin>, C<tech> or C<billing>) or C<status>), followed by a value.
 
 Example:
 
-  update domain example.com add ns ns0.example.com
+	update domain example.com add ns ns0.example.com
 
-  update domain example.com rem ns ns0.example.com
+	update domain example.com rem ns ns0.example.com
 
-  update domain example.com add status clientUpdateProhibited
+	update domain example.com add status clientUpdateProhibited
 
-  update domain example.com rem status clientHold
+	update domain example.com rem status clientHold
 
-  update domain example.com add admin H12345
+	update domain example.com add admin H12345
 
-  update domain example.com rem tech H54321
+	update domain example.com rem tech H54321
 
-  update domain example.com chg registrant H54321
+	update domain example.com chg registrant H54321
 
-  update domain example.cm chg authinfo foo2bar
+	update domain example.cm chg authinfo foo2bar
 
 Multiple changes can be combined in a single command:
 
-  update domain example.com add status clientUpdateProhibited rem ns ns0.example.com chg registrant H54321
+	update domain example.com add status clientUpdateProhibited rem ns ns0.example.com chg registrant H54321
 
 =head3 Host Updates
 
 Syntax:
 
-  update host HOSTNAME CHANGES
+	update host HOSTNAME CHANGES
 
 The C<CHANGES> argument consists of groups of three values: an action (ie C<add>, C<rem> or C<chg>), followed by a property name (ie C<addr>, C<status> or C<name>), followed by a value.
 
 Examples:
 
-  update host ns0.example.com add status clientUpdateProhibited
+	update host ns0.example.com add status clientUpdateProhibited
 
-  update host ns0.example.com rem addr 10.0.0.1
+	update host ns0.example.com rem addr 10.0.0.1
 
-  update host ns0.example.com chg name ns0.example.net
+	update host ns0.example.com chg name ns0.example.net
 
 Multiple changes can be combined in a single command:
 
-  update host ns0.example.com add status clientUpdateProhibited rem addr 10.0.0.1 add addr 1::1 chg name ns0.example.net
+	update host ns0.example.com add status clientUpdateProhibited rem addr 10.0.0.1 add addr 1::1 chg name ns0.example.net
 
 =head3 Contact Updates
 
@@ -1203,86 +1225,43 @@ Not currently implemented.
 
 Object transfers may be managed with the C<transfer> command. Usage:
 
-  transfer TYPE OBJECT CMD [AUTHINFO [PERIOD]]
+	transfer TYPE OBJECT CMD [AUTHINFO [PERIOD]]
 
 where:
 
 =over
 
-=item C<TYPE>
+=item C<TYPE> - C<domain> or C<contact>
 
-one of C<domain>, C<contact>
+=item C<OBJECT> - domain name or contact ID
 
-=item C<OBJECT>
+=item C<CMD> - one of (C<request>, C<query>, C<approve>, C<reject>, or C<cancel>)
 
-domain name or contact ID
+=item C<AUTHINFO> - authInfo code (used with C<request> only)
 
-=item C<CMD>
-
-one of (C<request>, C<query>, C<approve>, C<reject>, C<cancel>)
-
-=item C<AUTHINFO>
-
-authInfo code (used with C<request> only)
-
-=item C<PERIOD>
-
-additional validity period (used with domain C<request> only)
+=item C<PERIOD> - additional validity period (used with domain C<request> only)
 
 =back
-
-=head2 CLAIMS AND FEE CHECKS
-
-Pepper provides limited support for the the launch and fee extensions:
-
-=head3 CLAIMS CHECK
-
-The following command will extend the standard E<lt>checkE<gt> command to perform
-a claims check as per Section 3.1.1. of L<draft-ietf-eppext-launchphase>.
-
-	pepper> check claims example.xyz
-
-=head3 FEE CHECK
-
-The following command will extend the standard E<lt>checkE<gt> command to perform
-a fee check as per Section 3.1.1. of L<draft-brown-epp-fees-02>.
-
-	pepper> check fee example.xyz COMMAND [CURRENCY [PERIOD]]
-
-C<COMMAND> must be one of: C<create>, C<renew>, C<transfer>, C<restore>.
-C<CURRENCY> is OPTIONAL but if provided, must be a three-character currency code.
-C<PERIOD> is also OPTIONAL but if provided, must be an integer between 1 and 99.
-
-=head2 CREATING DOMAIN AND CONTACT OBJECTS
-
-Domains and contacts can be created using the C<clone> command.
-
-=head2 CREATING HOST OBJECTS
-
-Syntax:
-
-  create host HOSTNAME [IP [IP [IP [...]]]]
-
-Create a host object with the specified C<HOSTNAME>. IP address may also be
-specified: IPv4 and IPv6 addresses are automatically detected.
 
 =head1 INSTALLATION
 
-Pepper requires that the following Perl modules be installed:
+Pepper uses these modules:
 
 =over
 
-=item C<Term::ReadLine::Gnu> (and C<Term::ReadLine>)
+=item L<Term::ANSIColor>
 
-=item C<Net::EPP::Simple> (from C<Net::EPP>, in turn requires C<IO::Socket::SSL> and C<XML::LibXML>)
+=item L<Term::ReadLine::Gnu> (and L<Term::ReadLine>)
 
-=item C<Text::ParseWords>
+=item L<Net::EPP::Simple> (from L<Net::EPP>, which in turn uses L<IO::Socket::SSL> and L<XML::LibXML>)
 
-=item C<Mozilla::CA>
+=item L<Text::ParseWords>
+
+=item L<Mozilla::CA>
 
 =back
 
-This can be installed using one of the various CPAN clients, or as packages from your operating system vendor.
+They can be installed using one of the various CPAN clients, or as packages from your operating system vendor.
 
 =head1 LICENSE
 
