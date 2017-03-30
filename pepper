@@ -45,6 +45,42 @@ sub request {
 	}
 }
 
+package Pepper::Higlighter;
+use Term::ANSIColor;
+use Data::Dumper;
+use strict;
+use HTML::Entities qw(encode_entities_numeric);
+use vars qw($fh);
+
+our $fh;
+
+sub StartTag {
+	$fh->print(sprintf('%s<%s', color('cyan'), $_[1]));
+	foreach my $name (keys(%_)) {
+		$fh->print(sprintf(
+			' %s%s="%s"%s',
+			color('green'),
+			$name,
+			encode_entities_numeric($_{$name}, '<>&'),
+			color('reset')
+		));
+	}
+	$fh->print(sprintf('%s>%s', color('cyan'), color('reset')));
+}
+
+sub EndTag {
+	$fh->print(sprintf('%s</%s>%s', color('cyan'), $_[1], color('reset')));
+}
+
+sub Text {
+	$fh->print(encode_entities_numeric($_[0]->{'Text'}, '<>&'));
+}
+
+sub EndDocument {
+	$fh->print(color('reset'));
+	$fh->print("\n");
+}
+
 package main;
 use Term::ReadLine;
 use Net::EPP::Simple;
