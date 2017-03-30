@@ -130,9 +130,9 @@ Once running, Pepper provides a simple command line interface. The available com
 
     delete an object (`TYPE` is one of `domain`, `host`, `contact`)
 
-- `renew DOMAIN PERIOD`
+- `renew DOMAIN PERIOD [EXPDATE]`
 
-    renew a domain (1 year by default)
+    renew a domain (1 year by default). If you do not provide the `CUREXPDATE` argument, pepper will perform an `<info>` command to get it from the server.
 
 - `restore DOMAIN`
 
@@ -150,27 +150,55 @@ Once running, Pepper provides a simple command line interface. The available com
 
 Objects may be updated using the `update` command.
 
-### Host updates
+### Domain Updates
+
+    update domain HOSTNAME CHANGES
+
+The `CHANGES` argument consists of groups of three values: an action (ie `add`, `rem` or `chg`), followed by a property name (e.g. `ns`, a contact type (such as `admin`, `tech` or `billing`) or `status`), followed by a value.
+
+Example:
+
+    update domain example.com add ns ns0.example.com
+
+    update domain example.com rem ns ns0.example.com
+
+    update domain example.com add status clientUpdateProhibited
+
+    update domain example.com rem status clientHold
+
+    update domain example.com add admin H12345
+
+    update domain example.com rem tech H54321
+
+    update domain example.com chg registrant H54321
+
+    update domain example.cm chg authinfo foo2bar
+
+Multiple changes can be combined in a single command:
+
+    update domain example.com add status clientUpdateProhibited rem ns ns0.example.com chg registrant H54321
+
+### Host Updates
 
 Syntax:
 
     update host HOSTNAME CHANGES
 
-The `CHANGES` argument consists of groups of three values: an action (ie `add`, `rem` or `chg`) followed by a property name (ie `addr`, `status` or `name`) followed by a value.
+The `CHANGES` argument consists of groups of three values: an action (ie `add`, `rem` or `chg`), followed by a property name (ie `addr`, `status` or `name`), followed by a value.
 
 Examples:
 
-    update ns0.example.com add status clientUpdateProhibited
+    update host ns0.example.com add status clientUpdateProhibited
 
-    update ns0.example.com rem addr 10.0.0.1
+    update host ns0.example.com rem addr 10.0.0.1
 
-    update ns0.example.com chg name ns0.example.net
+    update host ns0.example.com chg name ns0.example.net
 
 Multiple changes can be combined in a single command:
 
     update host ns0.example.com add status clientUpdateProhibited rem addr 10.0.0.1 add addr 1::1 chg name ns0.example.net
 
-### Domain and Contact updates
+### Contact Updates
 
 Not currently implemented.
 
@@ -179,7 +207,6 @@ Not currently implemented.
 Object transfers may be managed with the `transfer` command. Usage:
 
     transfer TYPE OBJECT CMD [AUTHINFO [PERIOD]]
-    
 
 where:
 
