@@ -47,7 +47,7 @@ sub request {
 	my $response = $self->SUPER::request($frame);
 
 	if (!$response) {
-		$self->{'outfh'}->print(sprintf("%04d %s\n", $Net::EPP::Simple::Code, $Net::EPP::Simple::Error));
+		$self->{'outfh'}->print(sprintf("%s%04d%s %s\n", color($Net::EPP::Simple::Code < 2000 ? 'green' : 'red'), $Net::EPP::Simple::Code, color('reset'), $Net::EPP::Simple::Message));
 
 	} else {
 		return $response;
@@ -92,6 +92,7 @@ sub EndDocument {
 }
 
 package main;
+use Term::ANSIColor;
 use Term::ReadLine;
 use Net::EPP::Simple;
 use Getopt::Long;
@@ -227,7 +228,7 @@ while (1) {
 
 $term->WriteHistory($histfile);
 
-$epp->logout if ($epp->connected && $epp->authenticated);
+handle_logout() if ($epp->connected && $epp->authenticated);
 $epp->disconnect if ($epp->connected);
 
 note('bye!');
@@ -255,7 +256,10 @@ sub handle_timeout {
 }
 
 sub handle_ssl {
-	if ($_[0] eq 'on') {
+	if ($epp->connected) {
+		return error("Already connected");
+
+	} elsif ($_[0] eq 'on') {
 		$epp->{'ssl'} = 1;
 		note('SSL enabled');
 
@@ -271,19 +275,32 @@ sub handle_ssl {
 }
 
 sub handle_host {
-	$epp->{'host'} = $_[0];
-	note("Host set to %s", $_[0]);
-	return 1;
+	if ($epp->connected) {
+		return error("Already connected");
+
+	} else {
+		$epp->{'host'} = $_[0];
+		note("Host set to %s", $_[0]);
+		return 1;
+	}
 }
 
 sub handle_port {
-	$epp->{'port'} = int($_[0]);
-	note("Port set to %d", $_[0]);
-	return 1;
+	if ($epp->connected) {
+		return error("Already connected");
+
+	} else {
+		$epp->{'port'} = int($_[0]);
+		note("Port set to %d", $_[0]);
+		return 1;
+	}
 }
 
 sub handle_connect {
-	if ($epp->{'host'} eq '') {
+	if ($epp->connected) {
+		return error("Already connected");
+
+	} elsif ($epp->{'host'} eq '') {
 		return error('No host specified');
 
 	} else {
@@ -312,44 +329,53 @@ sub handle_credentials {
 		return error('Missing password');
 
 	} else {
-		handle_id($_[0]);
-		handle_pw($_[1]);
+		handle_id($_[0]) && handle_pw($_[1]);
 		return 1;
 
 	}
 }
 
 sub handle_id {
-	$epp->{'user'} = shift;
-	note("User ID set to '%s'", $epp->{'user'});
+	if ($epp->authenticated) {
+		return error("Already authenticated");
+
+	} else {
+		$epp->{'user'} = shift;
+		note("User ID set to '%s'", $epp->{'user'});
+	}
 }
 
 sub handle_pw {
-	$epp->{'pass'} = shift;
-	note("Password set to '%s'", ('*' x length($epp->{'pass'})));
+	if ($epp->authenticated) {
+		return error("Already authenticated");
+
+	} else {
+		$epp->{'pass'} = shift;
+		note("Password set to '%s'", ('*' x length($epp->{'pass'})));
+
+	}
 }
 
 sub handle_login {
 	my $verbose = shift;
-	if ($epp->{'host'} eq '') {
-		return error('No host specified');
-
-	} elsif ($epp->{'user'} eq '' || $epp->{'pass'} eq '') {
-		return error('No credentials specified');
-
-	} elsif (!$epp->connected) {
+	if (!$epp->connected) {
 		return handle_connect() && handle_login();
 
 	} elsif ($epp->authenticated) {
 		return error('Already logged in');
 
+	} elsif ($epp->{'host'} eq '') {
+		return error('No host specified');
+
+	} elsif ($epp->{'user'} eq '' || $epp->{'pass'} eq '') {
+		return error('No credentials specified');
+
 	} else {
 		$epp->{'quiet'} = ($verbose ? 0 : 1);
 		my $result = $epp->_login;
 		$epp->{'quiet'} = 0;
-		note("%04d %s", $Net::EPP::Simple::Code, $Net::EPP::Simple::Message);
+		note("%s%04d%s %s", color($Net::EPP::Simple::Code < 2000 ? 'green' : 'red'), $Net::EPP::Simple::Code, color('reset'), $Net::EPP::Simple::Message);
 		return $result;
-
 	}
 }
 
@@ -362,35 +388,46 @@ sub handle_logout {
 		$epp->{'quiet'} = 1;
 		my $result = $epp->logout;
 		$epp->{'quiet'} = 0;
-		note("%04d %s", $Net::EPP::Simple::Code, $Net::EPP::Simple::Message);
+		note("%s%04d%s %s", color($Net::EPP::Simple::Code < 2000 ? 'green' : 'red'), $Net::EPP::Simple::Code, color('reset'), $Net::EPP::Simple::Message);
 		return $result;
 	}
 }
 
 sub handle_hello {
-	return $epp->ping;
+	if (!$epp->connected) {
+		return error('Not connected');
+
+	} else {
+		return $epp->ping;
+
+	}
 }
 
 sub handle_check {
-	my ($type, $id, @extra) = @_;
-	if ($type eq 'domain') {
-		return $epp->check_domain($id);
-
-	} elsif ($type eq 'claims') {
-		return handle_claims_check($id);
-
-	} elsif ($type eq 'fee') {
-		return handle_fee_check($id, @extra);
-
-	} elsif ($type eq 'host') {
-		return $epp->check_host($id);
-
-	} elsif ($type eq 'contact') {
-		return $epp->check_contact($id);
+	if (!$epp->authenticated) {
+		return error('Not connected');
 
 	} else {
-		return error("Unsupported object type '$type'");
+		my ($type, $id, @extra) = @_;
+		if ($type eq 'domain') {
+			return $epp->check_domain($id);
 
+		} elsif ($type eq 'claims') {
+			return handle_claims_check($id);
+
+		} elsif ($type eq 'fee') {
+			return handle_fee_check($id, @extra);
+
+		} elsif ($type eq 'host') {
+			return $epp->check_host($id);
+
+		} elsif ($type eq 'contact') {
+			return $epp->check_contact($id);
+
+		} else {
+			return error("Unsupported object type '$type'");
+
+		}
 	}
 }
 
@@ -453,56 +490,77 @@ sub handle_fee_check {
 }
 
 sub handle_info {
-	my ($type, $id, $authInfo, $opt) = @_;
-	if ($type eq 'domain') {
-		$opt = $opt || 'all';
-		return $epp->domain_info($id, $authInfo, undef, $opt);
-
-	} elsif ($type eq 'host') {
-		return $epp->host_info($id);
-
-	} elsif ($type eq 'contact') {
-		return $epp->contact_info($id, $authInfo, $opt);
+	if (!$epp->authenticated) {
+		return error('Not connected');
 
 	} else {
-		return error("Unsupported object type '$type'");
+		my ($type, $id, $authInfo, $opt) = @_;
+		if ($type eq 'domain') {
+			$opt = $opt || 'all';
+			return $epp->domain_info($id, $authInfo, undef, $opt);
 
+		} elsif ($type eq 'host') {
+			return $epp->host_info($id);
+
+		} elsif ($type eq 'contact') {
+			return $epp->contact_info($id, $authInfo, $opt);
+
+		} else {
+			return error("Unsupported object type '$type'");
+
+		}
 	}
 }
 
 sub handle_poll {
-	my ($op, $id) = @_;
-	if ($op eq 'req') {
-		my $frame = Net::EPP::Frame::Command::Poll::Req->new;
-		$epp->request($frame);
-
-	} elsif ($op eq 'ack') {
-		my $frame = Net::EPP::Frame::Command::Poll::Ack->new;
-		$frame->setMsgID($id);
-		$epp->request($frame);
+	if (!$epp->authenticated) {
+		return error('Not connected');
 
 	} else {
-		error("Unsupported poll op '$op'");
+		my ($op, $id) = @_;
+		if ($op eq 'req') {
+			my $frame = Net::EPP::Frame::Command::Poll::Req->new;
+			$epp->request($frame);
 
+		} elsif ($op eq 'ack') {
+			my $frame = Net::EPP::Frame::Command::Poll::Ack->new;
+			$frame->setMsgID($id);
+			$epp->request($frame);
+
+		} else {
+			error("Unsupported poll op '$op'");
+
+		}
 	}
 }
 
 sub handle_send {
-	$epp->request($_[0]);
+	if (!$epp->connected) {
+		return error('Not connected');
+
+	} else {
+		$epp->request($_[0]);
+
+	}
 }
 
 sub handle_begin {
-	my $buffer = '';
-	while (my $line = <STDIN>) {
-		if ($line =~ /^END/) {
-			last;
+	if (!$epp->connected) {
+		return error('Not connected');
 
-		} else {
-			$buffer .= $line;
+	} else {
+		my $buffer = '';
+		while (my $line = <STDIN>) {
+			if ($line =~ /^END/) {
+				last;
 
+			} else {
+				$buffer .= $line;
+
+			}
 		}
+		$epp->request($buffer);
 	}
-	$epp->request($buffer);
 }
 
 sub handle_help {
@@ -521,26 +579,36 @@ sub handle_exit {
 }
 
 sub handle_transfer {
-	my ($type, $object, $cmd, $authinfo, $period) = @_;
+	if (!$epp->authenticated) {
+		return error('Not connected');
 
-	return error("invalid object type '%s'", $type) if ($type ne 'domain' && $type ne 'contact');
-	return error("invalid command '%s'", $cmd) if ($cmd ne 'query' && $cmd ne 'request' && $cmd ne 'cancel' && $cmd ne 'approve' && $cmd ne 'reject');
+	} else {
+		my ($type, $object, $cmd, $authinfo, $period) = @_;
 
-	return $epp->_transfer_request($cmd, $type, $object, $authinfo, $period);
+		return error("invalid object type '%s'", $type) if ($type ne 'domain' && $type ne 'contact');
+		return error("invalid command '%s'", $cmd) if ($cmd ne 'query' && $cmd ne 'request' && $cmd ne 'cancel' && $cmd ne 'approve' && $cmd ne 'reject');
+
+		return $epp->_transfer_request($cmd, $type, $object, $authinfo, $period);
+	}
 }
 
 sub handle_clone {
-	my ($type, $old, $new) = @_;
-
-	if (lc($type) eq 'contact') {
-		return handle_contact_clone($old, $new);
-
-	} elsif (lc($type) eq 'domain') {
-		return handle_domain_clone($old, $new);
+	if (!$epp->authenticated) {
+		return error('Not connected');
 
 	} else {
-		error("Unsupported object type '$type'");
+		my ($type, $old, $new) = @_;
 
+		if (lc($type) eq 'contact') {
+			return handle_contact_clone($old, $new);
+
+		} elsif (lc($type) eq 'domain') {
+			return handle_domain_clone($old, $new);
+
+		} else {
+			error("Unsupported object type '$type'");
+
+		}
 	}
 }
 
@@ -576,47 +644,64 @@ sub generate_authinfo {
 }
 
 sub handle_delete {
-	my ($type, $id) = @_;
-	if ($type eq 'domain') {
-		return $epp->delete_domain($id);
-
-	} elsif ($type eq 'host') {
-		return $epp->delete_host($id);
-
-	} elsif ($type eq 'contact') {
-		return $epp->delete_contact($id);
+	if (!$epp->authenticated) {
+		return error('Not connected');
 
 	} else {
-		return error("Unsupported object type '$type'");
+		my ($type, $id) = @_;
+		if ($type eq 'domain') {
+			return $epp->delete_domain($id);
 
+		} elsif ($type eq 'host') {
+			return $epp->delete_host($id);
+
+		} elsif ($type eq 'contact') {
+			return $epp->delete_contact($id);
+
+		} else {
+			return error("Unsupported object type '$type'");
+
+		}
 	}
 }
 
 sub handle_renew {
-	my ($domain, $period) = @_;
-	$period = 1 if (!$period);
+	if (!$epp->authenticated) {
+		return error('Not connected');
 
-	my $info = $epp->domain_info($domain);
-	return undef if (!$info);
+	} else {
+		my ($domain, $period, $date) = @_;
+		$period = 1 if (!$period);
 
-	my ($date, undef) = split(/T/, $info->{'exDate'}, 2);
+		if (!$date) {
+			my $info = $epp->domain_info($domain);
+			return undef if (!$info);
 
-	return $epp->renew_domain({
-		'name'		=> $domain,
-		'period'	=> $period,
-		'cur_exp_date'	=> $date,
-	});
+			($date, undef) = split(/T/, $info->{'exDate'}, 2);
+		}
+
+		return $epp->renew_domain({
+			'name'		=> $domain,
+			'period'	=> $period,
+			'cur_exp_date'	=> $date,
+		});
+	}
 }
 
 sub handle_create {
-	my $type = lc(shift);
-
-	if ($type eq 'host') {
-		return create_host(@_);
+	if (!$epp->authenticated) {
+		return error('Not connected');
 
 	} else {
-		return error("invalid type '%s'", $type);
+		my $type = lc(shift);
 
+		if ($type eq 'host') {
+			return create_host(@_);
+
+		} else {
+			return error("invalid type '%s'", $type);
+
+		}
 	}
 }
 
@@ -634,78 +719,181 @@ sub create_host {
 }
 
 sub handle_edit {
-	my $file = tmpnam();
-	if (0 != system(sprintf("%s %s", $ENV{'EDITOR'}, quotemeta($file)))) {
-		error("$ENV{'EDITOR'} exited abnormally");
+	if (!$epp->connected) {
+		return error('Not connected');
 
 	} else {
-		if (!-e $file || 0 == (stat($file))[7]) {
-			note("no data to send");
+		my $file = tmpnam();
+		if (0 != system(sprintf("%s %s", $ENV{'EDITOR'}, quotemeta($file)))) {
+			error("$ENV{'EDITOR'} exited abnormally");
 
 		} else {
-			local $/ = undef;
-			open(FILE, $file);
-			my $frame = <FILE>;
-			close(FILE);
-			unlink($file);
-			$epp->request($frame);
+			if (!-e $file || 0 == (stat($file))[7]) {
+				note("no data to send");
+
+			} else {
+				local $/ = undef;
+				open(FILE, $file);
+				my $frame = <FILE>;
+				close(FILE);
+				unlink($file);
+				$epp->request($frame);
+			}
 		}
 	}
 }
 
 sub handle_key {
-	my ($key, $pass) = @_;
-	$epp->{'key'} = $key;
-	$epp->{'passphrase'} = $pass;
-	note("Using '$key' as private key");
+	if ($epp->connected) {
+		return error('Already connected');
+
+	} else {
+		my ($key, $pass) = @_;
+		$epp->{'key'} = $key;
+		$epp->{'passphrase'} = $pass;
+		note("Using '$key' as private key");
+	}
 }
 
 sub handle_cert {
-	my $cert = shift;
-	$epp->{'cert'} = $cert;
-	note("Using '$cert' as certificate");
+	if ($epp->connected) {
+		return error('Already connected');
+
+	} else {
+		my $cert = shift;
+		$epp->{'cert'} = $cert;
+		note("Using '$cert' as certificate");
+	}
 }
 
 sub handle_restore {
-	my $domain = shift;
+	if (!$epp->connected) {
+		return error('Not connected');
 
-	my $frame = Net::EPP::Frame::Command::Update::Domain->new;
-	$frame->setDomain($domain);
+	} else {
+		my $domain = shift;
 
-	my $ext = $frame->getNode('extension');
-	if (!defined($ext)) {
-		$ext = $frame->createElementNS(undef, 'extension');
-		$frame->getNode('command')->insertBefore($ext, $frame->clTRID);
+		my $frame = Net::EPP::Frame::Command::Update::Domain->new;
+		$frame->setDomain($domain);
+
+		my $ext = $frame->getNode('extension');
+		if (!defined($ext)) {
+			$ext = $frame->createElementNS(undef, 'extension');
+			$frame->getNode('command')->insertBefore($ext, $frame->clTRID);
+		}
+
+		my $RGP_URN = 'urn:ietf:params:xml:ns:rgp-1.0';
+
+		my $upd = $ext->addNewChild($RGP_URN, 'rgp:update');
+		my $restore = $upd->addNewChild($RGP_URN, 'rgp:restore');
+		$restore->setAttribute('op', 'request');
+
+		return $epp->request($frame);
 	}
-
-	my $RGP_URN = 'urn:ietf:params:xml:ns:rgp-1.0';
-
-	my $upd = $ext->addNewChild($RGP_URN, 'rgp:update');
-	my $restore = $upd->addNewChild($RGP_URN, 'rgp:restore');
-	$restore->setAttribute('op', 'request');
-
-	return $epp->request($frame);
 }
 
 sub handle_update {
-	my $type = shift;
-	if ($type eq 'domain') {
-		return domain_update(@_);
-
-	} elsif ($type eq 'host') {
-		return host_update(@_);
-
-	} elsif ($type eq 'contact') {
-		return contact_update(@_);
+	if (!$epp->connected) {
+		return error('Not connected');
 
 	} else {
-		return error("Unsupported object type '$type'");
+		my $type = shift;
+		if ($type eq 'domain') {
+			return domain_update(@_);
 
+		} elsif ($type eq 'host') {
+			return host_update(@_);
+
+		} elsif ($type eq 'contact') {
+			return contact_update(@_);
+
+		} else {
+			return error("Unsupported object type '$type'");
+
+		}
 	}
 }
 
 sub domain_update {
-	error("Domain update not supported yet");
+	my $frame = Net::EPP::Frame::Command::Update::Domain->new;
+
+	$frame->setDomain(shift(@_));
+
+	my $changes = {
+		'ns'      => [],
+		'contact' => [],
+		'status'  => [],
+	};
+
+	for (my $i = 0 ; $i < scalar(@_) ; $i++) {
+		my $action	= lc($_[$i]);
+		my $type	= lc($_[++$i]);
+		my $value	= $_[++$i];
+
+		return error("Invalid parameter '$action'") if ($action !~ /^(add|rem|chg)$/);
+		return error("Missing parameter") if (!$type || !$value);
+		return error("Invalid property '$type'") if ($type !~ /^(ns|admin|tech|billing|status|registrant|authinfo)$/);
+
+		if ($type eq 'ns') {
+			push(@{$changes->{'ns'}}, [ $action,  $value ]);
+
+		} elsif ($type =~ /^(admin|tech|billing)$/) {
+			push(@{$changes->{'contact'}}, [ $action,  $type, $value ]);
+
+		} elsif ($type eq 'status') {
+			push(@{$changes->{'status'}}, [ $action,  $value ]);
+
+		} elsif ($action eq 'chg') {
+			if ('registrant' eq $type) {
+				$frame->chgRegistrant($value);
+
+			} elsif ('authinfo' eq $type) {
+				$frame->chgAuthinfo($value);
+
+			} else {
+
+			}
+
+		} else {
+			return error("Don't know what to do with '$action $type $value'");
+
+		}
+	}
+
+	foreach my $change (@{$changes->{'ns'}}) {
+		my ($action, $value) = @{$change};
+		if ($action eq 'add') {
+			$frame->addNS($value);
+
+		} else {
+			$frame->remNS($value);
+
+		}
+	}
+
+	foreach my $change (@{$changes->{'contact'}}) {
+		my ($action, $type, $value) = @{$change};
+		if ($action eq 'add') {
+			$frame->addContact($type, $value);
+
+		} else {
+			$frame->remContact($type, $value);
+
+		}
+	}
+
+	foreach my $change (@{$changes->{'status'}}) {
+		my ($action, $value) = @{$change};
+		if ($action eq 'add') {
+			$frame->addStatus($value);
+
+		} else {
+			$frame->remStatus($value);
+
+		}
+	}
+
+	return $epp->request($frame);
 }
 
 sub host_update {
@@ -741,6 +929,10 @@ sub host_update {
 				$frame->chgName($value);
 
 			}
+
+		} else {
+			return error("Don't know what to do with '$action $type $value'");
+
 		}
 	}
 
@@ -783,13 +975,13 @@ sub note {
 
 sub error {
 	my ($fmt, @args) = @_;
-	note("Error: ".$fmt, @args);
+	note(color('red')."Error: ".color('reset').$fmt, @args);
 	return undef;
 }
 
 sub fatal {
 	my ($fmt, @args) = @_;
-	note("Fatal Error: ".$fmt, @args);
+	note(color('red')."Fatal Error: ".color('reset').$fmt, @args);
 	exit(1);
 }
 
@@ -933,9 +1125,9 @@ clone a domain or contact object C<OLD> into a new object identified by C<NEW> (
 
 delete an object (C<TYPE> is one of C<domain>, C<host>, C<contact>)
 
-=item C<renew DOMAIN PERIOD>
+=item C<renew DOMAIN PERIOD [EXPDATE]>
 
-renew a domain (1 year by default)
+renew a domain (1 year by default). If you do not provide the C<CUREXPDATE> argument, pepper will perform an C<E<lt>infoE<gt>> command to get it from the server.
 
 =item C<restore DOMAIN>
 
@@ -955,27 +1147,55 @@ quit the program (logging out if necessary)
 
 Objects may be updated using the C<update> command.
 
-=head3 Host updates
+=head3 Domain Updates
+
+  update domain HOSTNAME CHANGES
+
+The C<CHANGES> argument consists of groups of three values: an action (ie C<add>, C<rem> or C<chg>), followed by a property name (e.g. C<ns>, a contact type (such as C<admin>, C<tech> or C<billing>) or C<status>), followed by a value.
+
+Example:
+
+  update domain example.com add ns ns0.example.com
+
+  update domain example.com rem ns ns0.example.com
+
+  update domain example.com add status clientUpdateProhibited
+
+  update domain example.com rem status clientHold
+
+  update domain example.com add admin H12345
+
+  update domain example.com rem tech H54321
+
+  update domain example.com chg registrant H54321
+
+  update domain example.cm chg authinfo foo2bar
+
+Multiple changes can be combined in a single command:
+
+  update domain example.com add status clientUpdateProhibited rem ns ns0.example.com chg registrant H54321
+
+=head3 Host Updates
 
 Syntax:
 
   update host HOSTNAME CHANGES
 
-The C<CHANGES> argument consists of groups of three values: an action (ie C<add>, C<rem> or C<chg>) followed by a property name (ie C<addr>, C<status> or C<name>) followed by a value.
+The C<CHANGES> argument consists of groups of three values: an action (ie C<add>, C<rem> or C<chg>), followed by a property name (ie C<addr>, C<status> or C<name>), followed by a value.
 
 Examples:
 
-  update ns0.example.com add status clientUpdateProhibited
+  update host ns0.example.com add status clientUpdateProhibited
 
-  update ns0.example.com rem addr 10.0.0.1
+  update host ns0.example.com rem addr 10.0.0.1
 
-  update ns0.example.com chg name ns0.example.net
+  update host ns0.example.com chg name ns0.example.net
 
 Multiple changes can be combined in a single command:
 
   update host ns0.example.com add status clientUpdateProhibited rem addr 10.0.0.1 add addr 1::1 chg name ns0.example.net
 
-=head3 Domain and Contact updates
+=head3 Contact Updates
 
 Not currently implemented.
 
@@ -984,7 +1204,7 @@ Not currently implemented.
 Object transfers may be managed with the C<transfer> command. Usage:
 
   transfer TYPE OBJECT CMD [AUTHINFO [PERIOD]]
-  
+
 where:
 
 =over
