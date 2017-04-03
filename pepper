@@ -680,7 +680,7 @@ sub handle_renew {
 		$period = 1 if (!$period);
 
 		if (!$date) {
-			my $info = $epp->domain_info($domain);
+			my $info = $epp->domain_info($domain, undef, undef, 'none');
 			return undef if (!$info);
 
 			($date, undef) = split(/T/, $info->{'exDate'}, 2);
