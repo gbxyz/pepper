@@ -77,14 +77,14 @@ sub EndDocument {
 }
 
 package main;
+use File::Temp qw(tmpnam);
+use Getopt::Long;
+use Mozilla::CA;
+use Net::EPP::Simple;
+use Pod::Usage;
 use Term::ANSIColor;
 use Term::ReadLine;
-use Net::EPP::Simple;
-use Getopt::Long;
 use Text::ParseWords;
-use Pod::Usage;
-use File::Temp qw(tmpnam);
-use Mozilla::CA;
 use strict;
 
 my $opt = {
@@ -570,9 +570,49 @@ sub handle_begin {
 }
 
 sub handle_help {
+	my $cmd = lc(shift || 'help');
+
+	my %map = (
+		'timeout'		=> 'SYNTAX/Connection Management',
+		'ssl'			=> 'SYNTAX/Connection Management',
+		'host'			=> 'SYNTAX/Connection Management',
+		'port'			=> 'SYNTAX/Connection Management',
+		'credentials'		=> 'SYNTAX/Session Management',
+		'id'			=> 'SYNTAX/Session Management',
+		'pw'			=> 'SYNTAX/Session Management',
+		'newpw'			=> 'SYNTAX/Session Management',
+		'connect'		=> 'SYNTAX/Connection Management',
+		'login'			=> 'SYNTAX/Session Management',
+		'logout'		=> 'SYNTAX/Session Management',
+		'hello'			=> 'SYNTAX/Miscellaneous Commands',
+		'check'			=> 'SYNTAX/Miscellaneous Commands',
+		'info'			=> 'SYNTAX/Miscellaneous Commands',
+		'poll'			=> 'SYNTAX/Session Management',
+		'help'			=> 'SYNTAX/Getting Help',
+		'send'			=> 'SYNTAX/Miscellaneous Commands',
+		'begin'			=> 'SYNTAX/Miscellaneous Commands',
+		'exit'			=> 'SYNTAX/Connection Management',
+		'transfer'		=> 'SYNTAX/OBJECT TRANSFERS',
+		'clone'			=> 'SYNTAX/Creating Objects',
+		'delete'		=> 'SYNTAX/Transform Commands',
+		'renew'			=> 'SYNTAX/Transform Commands',
+		'create'		=> 'SYNTAX/Creating Objects',
+		'create-domain'		=> 'SYNTAX/Creating Objects/Creating Domain Objects',
+		'create-host'		=> 'SYNTAX/Creating Objects/Creating Host Objects',
+		'create-contact'	=> 'SYNTAX/Creating Objects/Creating Update Objects',
+		'edit'			=> 'SYNTAX/Miscellaneous Commands',
+		'cert'			=> 'SYNTAX/Connection Management',
+		'key'			=> 'SYNTAX/Connection Management',
+		'restore'		=> 'SYNTAX/Transform Commands',
+		'update'		=> 'SYNTAX/Object Updates',
+		'update-domain'		=> 'SYNTAX/Object Updates/Domain Updates',
+		'update-host'		=> 'SYNTAX/Object Updates/Host Updates',
+		'update-contact'	=> 'SYNTAX/Object Updates/Contact Updates',
+	);
+
 	pod2usage(
 		'-verbose'	=> 99,
-		'-sections'	=> join('|', @_) || 'SYNTAX',
+		'-sections'	=> $map{$cmd} || $map{'help'},
 		'-exitval'	=> 'NOEXIT',
 	);
 }
@@ -634,6 +674,7 @@ sub handle_domain_clone {
 
 	my $info = $epp->domain_info($old) || return;
 
+	$info->{'period'} = 1;
 	$info->{'name'} = $new;
 	$info->{'authInfo'} = generate_authinfo();
 
@@ -704,6 +745,9 @@ sub handle_create {
 		if ($type eq 'host') {
 			return create_host(@_);
 
+		} elsif ($type eq 'domain') {
+			return create_domain(@_);
+
 		} else {
 			return error("invalid type '%s'", $type);
 
@@ -722,6 +766,44 @@ sub create_host {
 		}
 	}
 	return $epp->create_host($host);
+}
+
+sub create_domain {
+	my $domain = {
+		'name'		=> shift,
+		'contacts'	=> {},
+		'ns'		=> [],
+	};
+
+	for (my $i = 0 ; $i < scalar(@_) ; $i++) {
+		my $name = $_[$i];
+		my $value = $_[++$i];
+
+		if ($name eq 'period') {
+			$domain->{'period'} = int($value);
+
+		} elsif ($name eq 'registrant') {
+			$domain->{'registrant'} = $value;
+
+		} elsif ($name eq 'ns') {
+			push(@{$domain->{'ns'}}, $value);
+
+		} elsif (lc($name) eq 'authinfo') {
+			push(@{$domain->{'authInfo'}}, $value);
+
+		} elsif ($name =~ /^(admin|tech|billing)$/) {
+			$domain->{'contacts'}->{$name} = $value;
+
+		} else {
+			return error("Invalid property name '$name'");
+
+		}
+	}
+
+	$domain->{'period'} = 1 if ($domain->{'period'} < 1);
+	$domain->{'authInfo'} = generate_authinfo() if (length($domain->{'authInfo'}) < 1);
+
+	return $epp->create_domain($domain);
 }
 
 sub handle_edit {
@@ -1044,7 +1126,11 @@ Available command-line options:
 
 =head1 SYNTAX
 
-Once running, Pepper provides a simple command line interface. The available commands are listed below. You can use the C<help> command to view this list when pepper is running.
+Once running, Pepper provides a simple command line interface. The available commands are listed below.
+
+=head2 Getting Help
+
+Use C<help COMMAND> at any time to get information about that command. Where a command supports different object types (ie domain, host, contact), use C<help command-type>, ie C<help create-domain>.
 
 =head2 Connection Management
 
@@ -1102,6 +1188,8 @@ Once running, Pepper provides a simple command line interface. The available com
 
 =over
 
+=item C<create domain PARAMS> - create a domain object. See L<Creating Domain Objects> for more information.
+
 =item C<create host PARAMS> - create a host object. See L<Creating Host Objects> for more information.
 
 =item C<clone TYPE OLD NEW> - clone a domain or contact object C<OLD> into a new object identified by C<NEW>. C<TYPE> is one of C<domain> or C<contact>.
@@ -1152,11 +1240,35 @@ C<COMMAND> must be one of: C<create>, C<renew>, C<transfer>, or C<restore>.
 C<CURRENCY> is OPTIONAL but if provided, must be a three-character currency code.
 C<PERIOD> is also OPTIONAL but if provided, must be an integer between 1 and 99.
 
-=head2 Creating Domain and Contact Objects
+=head2 Creating Objects
 
-Domain and contact objects can currently only be created using the C<clone> command.
+=head3 Creating Domain Objects
 
-=head2 Creating Host Objects
+There are two ways of creating a domain:
+
+	clone domain OLD NEW
+
+This command creates the domain C<NEW> using the same contacts and nameservers as C<OLD>.
+
+	create domain DOMAIN PARAMS
+
+This command creates a domain according to the parameters specified after the domain. C<PARAMS> consists of pairs of name and value pairs as follows:
+
+=over
+
+=item C<period PERIOD> - the registration period. Defaults to 1 year.
+
+=item C<registrant ID> - the registrant.
+
+=item C<(admin|tech|billing) ID> - the admin contact
+
+=item C<ns HOST> - add a nameserver
+
+=item C<authInfo pw> - authInfo code. A random string will be used if not provided.
+
+=back
+
+=head3 Creating Host Objects
 
 Syntax:
 
@@ -1164,6 +1276,10 @@ Syntax:
 
 Create a host object with the specified C<HOSTNAME>. IP address may also be
 specified: IPv4 and IPv6 addresses are automatically detected.
+
+=head3 Creating Contact Objects
+
+Contact objects can currently only be created using the C<clone> command.
 
 =head2 Object Updates
 
@@ -1253,7 +1369,7 @@ Pepper uses these modules:
 
 =item L<Term::ReadLine::Gnu> (and L<Term::ReadLine>)
 
-=item L<Net::EPP::Simple> (from L<Net::EPP>, which in turn uses L<IO::Socket::SSL> and L<XML::LibXML>)
+=item L<Net::EPP::Simple> (from L<Net::EPP>, which in turn uses L<IO::Socket::SSL> and L<XML::LibXML>). Pepper usually requires the most recent "unstable" version which can be obtained from L<https://gitlab.centralnic.com/centralnic/perl-net-epp>.
 
 =item L<Text::ParseWords>
 
