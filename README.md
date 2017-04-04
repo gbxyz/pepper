@@ -26,7 +26,11 @@ Available command-line options:
 
 # SYNTAX
 
-Once running, Pepper provides a simple command line interface. The available commands are listed below. You can use the `help` command to view this list when pepper is running.
+Once running, Pepper provides a simple command line interface. The available commands are listed below.
+
+## Getting Help
+
+Use `help COMMAND` at any time to get information about that command. Where a command supports different object types (ie domain, host, contact), use `help command-type`, ie `help create-domain`.
 
 ## Connection Management
 
@@ -56,6 +60,7 @@ Once running, Pepper provides a simple command line interface. The available com
 
 ## Transform Commands
 
+- `create domain PARAMS` - create a domain object. See ["Creating Domain Objects"](#creating-domain-objects) for more information.
 - `create host PARAMS` - create a host object. See ["Creating Host Objects"](#creating-host-objects) for more information.
 - `clone TYPE OLD NEW` - clone a domain or contact object `OLD` into a new object identified by `NEW`. `TYPE` is one of `domain` or `contact`.
 - `update TYPE CHANGES` - update an object. `TYPE` is one of `domain`, `host`, or `contact`. See ["Object Updates"](#object-updates) for further information.
@@ -92,11 +97,27 @@ a fee check as per Section 3.1.1. of [draft-brown-epp-fees-02](https://metacpan.
 `CURRENCY` is OPTIONAL but if provided, must be a three-character currency code.
 `PERIOD` is also OPTIONAL but if provided, must be an integer between 1 and 99.
 
-## Creating Domain and Contact Objects
+## Creating Objects
 
-Domain and contact objects can currently only be created using the `clone` command.
+### Creating Domain Objects
 
-## Creating Host Objects
+There are two ways of creating a domain:
+
+        clone domain OLD NEW
+
+This command creates the domain `NEW` using the same contacts and nameservers as `OLD`.
+
+        create domain DOMAIN PARAMS
+
+This command creates a domain according to the parameters specified after the domain. `PARAMS` consists of pairs of name and value pairs as follows:
+
+- `period PERIOD` - the registration period. Defaults to 1 year.
+- `registrant ID` - the registrant.
+- `(admin|tech|billing) ID` - the admin contact
+- `ns HOST` - add a nameserver
+- `authInfo pw` - authInfo code. A random string will be used if not provided.
+
+### Creating Host Objects
 
 Syntax:
 
@@ -104,6 +125,10 @@ Syntax:
 
 Create a host object with the specified `HOSTNAME`. IP address may also be
 specified: IPv4 and IPv6 addresses are automatically detected.
+
+### Creating Contact Objects
+
+Contact objects can currently only be created using the `clone` command.
 
 ## Object Updates
 
@@ -181,7 +206,7 @@ Pepper uses these modules:
 
 - [Term::ANSIColor](https://metacpan.org/pod/Term::ANSIColor)
 - [Term::ReadLine::Gnu](https://metacpan.org/pod/Term::ReadLine::Gnu) (and [Term::ReadLine](https://metacpan.org/pod/Term::ReadLine))
-- [Net::EPP::Simple](https://metacpan.org/pod/Net::EPP::Simple) (from [Net::EPP](https://metacpan.org/pod/Net::EPP), which in turn uses [IO::Socket::SSL](https://metacpan.org/pod/IO::Socket::SSL) and [XML::LibXML](https://metacpan.org/pod/XML::LibXML))
+- [Net::EPP::Simple](https://metacpan.org/pod/Net::EPP::Simple) (from [Net::EPP](https://metacpan.org/pod/Net::EPP), which in turn uses [IO::Socket::SSL](https://metacpan.org/pod/IO::Socket::SSL) and [XML::LibXML](https://metacpan.org/pod/XML::LibXML)). Pepper usually requires the most recent "unstable" version which can be obtained from [https://gitlab.centralnic.com/centralnic/perl-net-epp](https://gitlab.centralnic.com/centralnic/perl-net-epp).
 - [Text::ParseWords](https://metacpan.org/pod/Text::ParseWords)
 - [Mozilla::CA](https://metacpan.org/pod/Mozilla::CA)
 
