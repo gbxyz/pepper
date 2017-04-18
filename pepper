@@ -152,7 +152,7 @@ my $out = $term->OUT || \*STDOUT;
 
 my $histfile = $ENV{'HOME'}.'/.pepper_history';
 
-$term->ReadHistory($histfile);
+$term->ReadHistory($histfile) if ('Term::ReadLine::Gnu' eq $term->ReadLine);
 
 note('Welcome to pepper!');
 
@@ -219,7 +219,7 @@ while (1) {
 	}
 }
 
-$term->WriteHistory($histfile);
+$term->WriteHistory($histfile) if ('Term::ReadLine::Gnu' eq $term->ReadLine);
 
 handle_logout() if ($epp->connected && $epp->authenticated);
 $epp->disconnect if ($epp->connected);
