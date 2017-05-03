@@ -148,7 +148,9 @@ if ($opt->{'help'}) {
 
 my $term = Term::ReadLine->new('pepper');
 my $prompt = 'pepper> ';
-my $out = $term->OUT || \*STDOUT;
+#my $out = $term->OUT || \*STDOUT;
+my $out = IO::Handle->new;
+$out->fdopen(fileno(STDOUT), 'w');
 
 my $histfile = $ENV{'HOME'}.'/.pepper_history';
 
