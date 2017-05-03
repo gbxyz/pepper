@@ -202,7 +202,7 @@ if ($opt->{'exec'} ne '') {
 
 my $last;
 while (1) {
-	$prompt = sprintf('pepper[%s@%s]> ', $epp->{'user'}, $epp->{'host'}) if ($epp->authenticated);
+	$prompt = sprintf('pepper (%s@%s)> ', $epp->{'user'}, $epp->{'host'}) if ($epp->authenticated);
 
 	my $command = $term->readline($prompt);
 	if (!defined($command)) {
