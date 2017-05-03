@@ -1178,11 +1178,19 @@ Use C<help COMMAND> at any time to get information about that command. Where a c
 
 =head2 Query Commands
 
-=over
+=head3 Availability Checks
 
-=item C<check TYPE OBJECT> - checks the availability of an object. C<TYPE> is one of C<domain>, C<host>, C<contact>, C<claims> or C<fee>. See L<Claims and fee Checks> for more information about the latter two.
+	check TYPE OBJECT
 
-=item C<info TYPE OBJECT> - get object information. C<TYPE> is one of C<domain>, C<host>, C<contact>.
+This checks the availability of an object. C<TYPE> is one of C<domain>, C<host>, C<contact>, C<claims> or C<fee>. See L<Claims and fee Checks> for more information about the latter two.
+
+=head3 Object Information
+
+	info TYPE OBJECT [PARAMS]
+
+Get object information. C<TYPE> is one of C<domain>, C<host>, C<contact>. For domain objects, C<PARAMS> can be C<AUTHINFO HOSTS>, where C<AUTHINFO> is the domain's authInfo code, and C<HOSTS> is the value of the "hosts" attribute (ie C<all>, C<del>, C<sub> or C<none>). If you want to set C<HOSTS> but don't know the authinfo, use an empty quoted string (ie C<"">) as C<AUTHINFO>.
+
+For contact objects, C<PARAMS> can be the contact's authInfo.
 
 =back
 

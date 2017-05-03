@@ -55,8 +55,19 @@ Use `help COMMAND` at any time to get information about that command. Where a co
 
 ## Query Commands
 
-- `check TYPE OBJECT` - checks the availability of an object. `TYPE` is one of `domain`, `host`, `contact`, `claims` or `fee`. See ["Claims and fee Checks"](#claims-and-fee-checks) for more information about the latter two.
-- `info TYPE OBJECT` - get object information. `TYPE` is one of `domain`, `host`, `contact`.
+### Availability Checks
+
+        check TYPE OBJECT
+
+This checks the availability of an object. `TYPE` is one of `domain`, `host`, `contact`, `claims` or `fee`. See ["Claims and fee Checks"](#claims-and-fee-checks) for more information about the latter two.
+
+### Object Information
+
+        info TYPE OBJECT [PARAMS]
+
+Get object information. `TYPE` is one of `domain`, `host`, `contact`. For domain objects, `PARAMS` can be `AUTHINFO HOSTS`, where `AUTHINFO` is the domain's authInfo code, and `HOSTS` is the value of the "hosts" attribute (ie `all`, `del`, `sub` or `none`). If you want to set `HOSTS` but don't know the authinfo, use an empty quoted string (ie `""`) as `AUTHINFO`.
+
+For contact objects, `PARAMS` can be the contact's authInfo.
 
 ## Transform Commands
 
@@ -217,3 +228,11 @@ They can be installed using one of the various CPAN clients, or as packages from
 Copyright CentralNic Group plc.
 
 This program is Free Software; you can use it and/or modify it under the same terms as Perl itself.
+
+# POD ERRORS
+
+Hey! **The above document had some coding errors, which are explained below:**
+
+- Around line 1195:
+
+    &#x3d;back without =over
