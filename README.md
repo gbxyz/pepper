@@ -1,10 +1,10 @@
 # NAME
 
-Pepper - A command line EPP client
+Pepper - A command-line EPP client.
 
 # DESCRIPTION
 
-Pepper is a command-line client for the EPP protocol. It's written in Perl and uses the Net::EPP module.
+Pepper is a command-line client for the EPP protocol. It's written in Perl and uses the [Net::EPP](https://metacpan.org/pod/Net::EPP) module.
 
 # USAGE
 
@@ -12,11 +12,13 @@ Pepper is a command-line client for the EPP protocol. It's written in Perl and u
 
 Available command-line options:
 
+- `--help` - show help and exit.
 - `--host=HOST` - sets the host to connect to.
 - `--port=PORT` - sets the port. Defaults to 700.
 - `--timeout=TIMEOUT` - sets the timeout. Defaults to 3.
 - `--user=USER` - sets the client ID.
 - `--pass=PASS` - sets the client password.
+- `--newpw=PASS` - specify a new password to replace the current password.
 - `--cert=FILE` - specify the client certificate to use to connect.
 - `--key=FILE` - specify the private key for the client certificate.
 - `--exec=COMMAND` - specify a command to execute. If not provided, pepper goes into interactive mode.
@@ -26,7 +28,7 @@ Available command-line options:
 
 # SYNTAX
 
-Once running, Pepper provides a simple command line interface. The available commands are listed below.
+Once running, Pepper provides a simple command-line interface. The available commands are listed below.
 
 ## Getting Help
 
@@ -215,7 +217,7 @@ where:
 
 Pepper uses these modules:
 
-- [Term::ANSIColor](https://metacpan.org/pod/Term::ANSIColor)
+- [Term::ANSIColor](https://metacpan.org/pod/Term::ANSIColor) (version 2.01 or higher)
 - [Term::ReadLine::Gnu](https://metacpan.org/pod/Term::ReadLine::Gnu) (and [Term::ReadLine](https://metacpan.org/pod/Term::ReadLine))
 - [Net::EPP::Simple](https://metacpan.org/pod/Net::EPP::Simple) (from [Net::EPP](https://metacpan.org/pod/Net::EPP), which in turn uses [IO::Socket::SSL](https://metacpan.org/pod/IO::Socket::SSL) and [XML::LibXML](https://metacpan.org/pod/XML::LibXML)). Pepper usually requires the most recent "unstable" version which can be obtained from [https://gitlab.centralnic.com/centralnic/perl-net-epp](https://gitlab.centralnic.com/centralnic/perl-net-epp).
 - [Text::ParseWords](https://metacpan.org/pod/Text::ParseWords)
@@ -228,11 +230,3 @@ They can be installed using one of the various CPAN clients, or as packages from
 Copyright CentralNic Group plc.
 
 This program is Free Software; you can use it and/or modify it under the same terms as Perl itself.
-
-# POD ERRORS
-
-Hey! **The above document had some coding errors, which are explained below:**
-
-- Around line 1195:
-
-    &#x3d;back without =over
