@@ -16,8 +16,6 @@ sub new {
 
 	my $self = $package->SUPER::new(%params);
 
-	$self->{'outfh'} = $Pepper::Higlighter::fh = $params{'outfh'};
-
 	$self->{'pretty_parser'} = XML::Parser->new(
 		'Style' => 'Stream',
 		'Pkg' => 'Pepper::Higlighter',
@@ -29,51 +27,139 @@ sub new {
 sub get_frame {
 	my $self = shift;
 	my $response = $self->SUPER::get_frame;
-	$self->{'pretty_parser'}->parse($response->toString(2)) if (!$self->{'quiet'} && $response && ($response->isa('XML::LibXML::Document') || $response->isa('Net::EPP::Frame::Response')));
+	$self->{'pretty_parser'}->{'lineprefix'} = 'S: ';
+	$self->{'pretty_parser'}->parse($response->toString) if (!$self->{'quiet'} && $response && ($response->isa('XML::LibXML::Document') || $response->isa('Net::EPP::Frame::Response')));
 	return $response;
 }
 
 sub send_frame {
 	my ($self, $frame, $wfcheck) = @_;
 
-	$self->{'pretty_parser'}->parse($frame->toString(2)) if (!$self->{'quiet'} && ($frame->isa('XML::LibXML::Document') || $frame->isa('Net::EPP::Frame')));
+	$self->{'pretty_parser'}->{'lineprefix'} = 'C: ';
+	$self->{'pretty_parser'}->parse($frame->toString) if (!$self->{'quiet'} && ($frame->isa('XML::LibXML::Document') || $frame->isa('Net::EPP::Frame')));
 
 	return $self->SUPER::send_frame($frame, $wfcheck);
 }
 
+#
+# Pepper::Higlighter implements an XML parser which pretty-prints XML using ANSI color codes
+#
 package Pepper::Higlighter;
 use Term::ANSIColor;
-use strict;
 use HTML::Entities qw(encode_entities_numeric);
-use vars qw($fh);
+use vars qw($buffer $depth $indent $tag $end);
+use strict;
 
-our $fh;
+# output buffer
+our $buffer;
+
+# indent depth
+our $depth;
+
+# indent string
+our $indent = '  ';
+
+# arrayref identifying the "current" tag, used to do short-tags
+our $tag;
+
+# this string contains a regexp that will match the end of the buffer if we've just opened a new tag
+our $end = quotemeta('>'.color('reset'));
+
+sub StartDocument {
+	# initialise variables
+	$buffer	= '';
+	$depth	= 0;
+	$tag	= undef;
+}
 
 sub StartTag {
-	$fh->print(sprintf('%s<%s', color('cyan'), $_[1]));
+	$buffer .= "\n" if ($buffer ne '' && "\n" ne substr($buffer, -1));
+
+	# open the tag
+	$buffer .= sprintf(
+		'%s%s<%s',
+		($indent x $depth),
+		color('cyan'),
+		$_[1]
+	);
+
+	# print attributes
 	foreach my $name (keys(%_)) {
-		$fh->print(sprintf(
-			' %s%s="%s"%s',
+		$buffer .= sprintf(
+			' %s%s="%s%s%s"%s',
 			color('green'),
 			$name,
+			color('reset'),
 			encode_entities_numeric($_{$name}, '<>&'),
-			color('reset')
-		));
+			color('green'),
+			color('reset'),
+		);
 	}
-	$fh->print(sprintf('%s>%s', color('cyan'), color('reset')));
+
+	# close the tag
+	$buffer .= sprintf(
+		"%s>%s",
+		color('cyan'),
+		color('reset'),
+	);
+
+	# increase indent depth
+	$depth++;
+
+	# record this element as the current tag
+	$tag = [ $_[1], $depth ];
 }
 
 sub EndTag {
-	$fh->print(sprintf('%s</%s>%s', color('cyan'), $_[1], color('reset')));
+	if ($tag && $tag->[0] eq $_[1] && $tag->[1] == $depth && $buffer =~ /$end$/) {
+		# we are closing a tag that has no child elements, so convert it to a "short" tag (ie <foo/>)
+		$buffer =~ s/$end$//g;
+		$buffer .= '/>'.color('reset');
+
+	} else {
+		# we have some children, so close normally
+
+		$buffer .= "\n".($indent x ($depth-1)) if ($buffer =~ /$end$/);
+
+		$buffer .= sprintf(
+			"%s</%s>%s",
+			color('cyan'),
+			$_[1],
+			color('reset'),
+		);
+	}
+
+	# decrement depth
+	$depth--;
+
+	# reset current tag
+	$tag = undef;
 }
 
 sub Text {
-	$fh->print(encode_entities_numeric($_[0]->{'Text'}, '<>&'));
+	# remove any enclosing whitespace around the text
+	$_[0]->{'Text'} =~ s/^[ \t\r\n]+//sg;
+	$_[0]->{'Text'} =~ s/[ \t\r\n]+$//sg;
+
+	# indent if on a newline
+	$buffer .= ($indent x $depth) if ("\n" eq substr($buffer, -1));
+
+	# append text
+	$buffer .= encode_entities_numeric($_[0]->{'Text'}, '<>&');
 }
 
 sub EndDocument {
-	$fh->print(color('reset'));
-	$fh->print("\n");
+	# remove trailing whitespace
+	$buffer =~ s/[ \t\r\n]+$//sg;
+
+	# make sure we don't bleed any colours
+	$buffer .= color('reset');
+
+	# replace newlines with any line prefix that is defined
+	$buffer =~ s/\n/\n$_[0]->{'lineprefix'}/sg;
+
+	# output
+	print $_[0]->{'lineprefix'}.$buffer."\n";
 }
 
 package main;
@@ -148,9 +234,6 @@ if ($opt->{'help'}) {
 
 my $term = Term::ReadLine->new('pepper');
 my $prompt = 'pepper> ';
-#my $out = $term->OUT || \*STDOUT;
-my $out = IO::Handle->new;
-$out->fdopen(fileno(STDOUT), 'w');
 
 my $histfile = $ENV{'HOME'}.'/.pepper_history';
 
@@ -158,7 +241,7 @@ $term->ReadHistory($histfile) if ('Term::ReadLine::Gnu' eq $term->ReadLine);
 
 note('Welcome to pepper!');
 
-note('For best results, install Term::ReadLine::Gnu') if ('Term::ReadLine::Gnu' ne $term->ReadLine);
+note(color('yellow').'> For best results, install Term::ReadLine::Gnu <'.color('reset')) if ('Term::ReadLine::Gnu' ne $term->ReadLine);
 
 my $epp = Pepper::EPPClient->new(
 	'host'		=> '',
@@ -169,17 +252,18 @@ my $epp = Pepper::EPPClient->new(
 	'verify'	=> ($opt->{'insecure'} ? undef : 1),
 	'ca_file'	=> Mozilla::CA::SSL_ca_file(),
 	'lang'		=> ($opt->{'lang'} ? $opt->{'lang'} : 'en'),
-	'outfh'		=> $out,
 );
 
-execute_command(sprintf('timeout %d',	$opt->{'timeout'}))	if ($opt->{'timeout'});
-execute_command(sprintf('port %d',	$opt->{'port'}))	if ($opt->{'port'});
-execute_command(sprintf('host %s',	$opt->{'host'}))	if ($opt->{'host'});
-execute_command(sprintf('id %s',	$opt->{'user'}))	if ($opt->{'user'});
-execute_command(sprintf('pw %s',	$opt->{'pass'}))	if ($opt->{'pass'});
-execute_command(sprintf('newpw %s',	$opt->{'newpw'}))	if ($opt->{'newpw'});
-execute_command(sprintf('cert %s',	$opt->{'cert'}))	if ($opt->{'cert'});
-execute_command(sprintf('key %s',	$opt->{'key'}))		if ($opt->{'key'});
+my $interactive;
+
+execute_command(sprintf('timeout %d',	$opt->{'timeout'}))		if ($opt->{'timeout'});
+execute_command(sprintf('port %d',	$opt->{'port'}))		if ($opt->{'port'});
+execute_command(sprintf('host "%s"',	$opt->{'host'}))		if ($opt->{'host'});
+execute_command(sprintf('id "%s"',	quotemeta($opt->{'user'})))	if ($opt->{'user'});
+execute_command(sprintf('pw "%s"',	quotemeta($opt->{'pass'})))	if ($opt->{'pass'});
+execute_command(sprintf('newpw "%s"',	quotemeta($opt->{'newpw'})))	if ($opt->{'newpw'});
+execute_command(sprintf('cert "%s"',	quotemeta($opt->{'cert'})))	if ($opt->{'cert'});
+execute_command(sprintf('key "%s"',	quotemeta($opt->{'key'})))	if ($opt->{'key'});
 
 if ($epp->{'user'} ne '' && $epp->{'pass'} ne '') {
 	execute_command('login');
@@ -199,6 +283,8 @@ if ($opt->{'exec'} ne '') {
 
 	}
 }
+
+$interactive = 1;
 
 my $last;
 while (1) {
@@ -236,7 +322,7 @@ sub execute_command {
 	my $command = shift(@args);
 
 	if (!defined($handlers->{$command})) {
-		error("Unknown command '$command'");
+		error("Unknown command '$command'") if ($interactive);
 
 	} else {
 		&{$handlers->{$command}}(@args);
@@ -791,7 +877,7 @@ sub create_domain {
 			push(@{$domain->{'ns'}}, $value);
 
 		} elsif (lc($name) eq 'authinfo') {
-			push(@{$domain->{'authInfo'}}, $value);
+			$domain->{'authInfo'} = $value;
 
 		} elsif ($name =~ /^(admin|tech|billing)$/) {
 			$domain->{'contacts'}->{$name} = $value;
@@ -804,6 +890,9 @@ sub create_domain {
 
 	$domain->{'period'} = 1 if ($domain->{'period'} < 1);
 	$domain->{'authInfo'} = generate_authinfo() if (length($domain->{'authInfo'}) < 1);
+
+	use Data::Dumper;
+	print Dumper($domain);
 
 	return $epp->create_domain($domain);
 }
@@ -1069,7 +1158,7 @@ sub contact_update {
 sub note {
 	my ($fmt, @args) = @_;
 	my $msg = sprintf($fmt, @args);
-	print $out $msg."\n";
+	print $msg."\n";
 }
 
 sub error {
