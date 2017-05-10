@@ -228,8 +228,10 @@ my $handlers = {
 };
 
 if ($opt->{'help'}) {
-	execute_command('help USAGE');
-	exit;
+	pod2usage(
+		'-verbose'	=> 99,
+		'-sections'	=> 'USAGE',
+	);
 }
 
 my $term = Term::ReadLine->new('pepper');
