@@ -126,7 +126,9 @@ This command creates a domain according to the parameters specified after the do
 
 - `period PERIOD` - the registration period. Defaults to 1 year.
 - `registrant ID` - the registrant.
-- `(admin|tech|billing) ID` - the admin contact
+- `admin ID` - the admin contact
+- `tech ID` - the tech contact
+- `billing ID` - the billing contact
 - `ns HOST` - add a nameserver
 - `authInfo pw` - authInfo code. A random string will be used if not provided.
 

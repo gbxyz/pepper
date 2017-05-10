@@ -686,7 +686,7 @@ sub handle_help {
 		'create'		=> 'SYNTAX/Creating Objects',
 		'create-domain'		=> 'SYNTAX/Creating Objects/Creating Domain Objects',
 		'create-host'		=> 'SYNTAX/Creating Objects/Creating Host Objects',
-		'create-contact'	=> 'SYNTAX/Creating Objects/Creating Update Objects',
+		'create-contact'	=> 'SYNTAX/Creating Objects/Creating Contact Objects',
 		'edit'			=> 'SYNTAX/Miscellaneous Commands',
 		'cert'			=> 'SYNTAX/Connection Management',
 		'key'			=> 'SYNTAX/Connection Management',
@@ -696,6 +696,8 @@ sub handle_help {
 		'update-host'		=> 'SYNTAX/Object Updates/Host Updates',
 		'update-contact'	=> 'SYNTAX/Object Updates/Contact Updates',
 	);
+
+	print "\n";
 
 	pod2usage(
 		'-verbose'	=> 99,
@@ -889,9 +891,6 @@ sub create_domain {
 
 	$domain->{'period'} = 1 if ($domain->{'period'} < 1);
 	$domain->{'authInfo'} = generate_authinfo() if (length($domain->{'authInfo'}) < 1);
-
-	use Data::Dumper;
-	print Dumper($domain);
 
 	return $epp->create_domain($domain);
 }
@@ -1360,7 +1359,11 @@ This command creates a domain according to the parameters specified after the do
 
 =item C<registrant ID> - the registrant.
 
-=item C<(admin|tech|billing) ID> - the admin contact
+=item C<admin ID> - the admin contact
+
+=item C<tech ID> - the tech contact
+
+=item C<billing ID> - the billing contact
 
 =item C<ns HOST> - add a nameserver
 
