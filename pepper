@@ -1039,6 +1039,7 @@ sub domain_update {
 				$frame->chgAuthinfo($value);
 
 			} else {
+				return error("Don't know how to change '$type'");
 
 			}
 
