@@ -288,12 +288,16 @@ if ($opt->{'exec'} ne '') {
 
 $interactive = 1;
 
+#
+# main loop
+#
 my $last;
 while (1) {
 	$prompt = sprintf('pepper (%s@%s)> ', $epp->{'user'}, $epp->{'host'}) if ($epp->authenticated);
 
 	my $command = $term->readline($prompt);
 	if (!defined($command)) {
+		print "\n";
 		last;
 
 	} elsif ($command ne '') {
