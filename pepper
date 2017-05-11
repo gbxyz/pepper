@@ -232,6 +232,7 @@ if ($opt->{'help'}) {
 		'-verbose'	=> 99,
 		'-sections'	=> 'USAGE',
 	);
+	exit;
 }
 
 my $term = Term::ReadLine->new('pepper');
@@ -260,7 +261,7 @@ my $interactive;
 
 execute_command(sprintf('timeout %d',	$opt->{'timeout'}))		if ($opt->{'timeout'});
 execute_command(sprintf('port %d',	$opt->{'port'}))		if ($opt->{'port'});
-execute_command(sprintf('host "%s"',	$opt->{'host'}))		if ($opt->{'host'});
+execute_command(sprintf('host "%s"',	quotemeta($opt->{'host'})))	if ($opt->{'host'});
 execute_command(sprintf('id "%s"',	quotemeta($opt->{'user'})))	if ($opt->{'user'});
 execute_command(sprintf('pw "%s"',	quotemeta($opt->{'pass'})))	if ($opt->{'pass'});
 execute_command(sprintf('newpw "%s"',	quotemeta($opt->{'newpw'})))	if ($opt->{'newpw'});
