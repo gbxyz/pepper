@@ -171,6 +171,7 @@ use Pod::Usage;
 use Term::ANSIColor;
 use Term::ReadLine;
 use Text::ParseWords;
+use XML::LibXML;
 use strict;
 
 my $opt = {
@@ -239,6 +240,8 @@ my $term = Term::ReadLine->new('pepper');
 my $prompt = 'pepper> ';
 
 my $histfile = $ENV{'HOME'}.'/.pepper_history';
+
+my $xml = XML::LibXML->new;
 
 $term->ReadHistory($histfile) if ('Term::ReadLine::Gnu' eq $term->ReadLine);
 
@@ -639,7 +642,7 @@ sub handle_send {
 		return error('Not connected');
 
 	} else {
-		$epp->request($_[0]);
+		return send_file($_[0]);
 
 	}
 }
@@ -659,7 +662,55 @@ sub handle_begin {
 
 			}
 		}
-		$epp->request($buffer);
+		my $frame;
+		eval { $frame = $xml->parse_string($buffer) };
+		if ($@ || !$frame) {
+			$@ =~ s/[\r\n]+$//g;
+			error("Unable to parse frame ($@)");
+
+		} else {
+			return $epp->request($frame);
+
+		}
+	}
+}
+
+sub handle_edit {
+	if (!$epp->connected) {
+		return error('Not connected');
+
+	} else {
+		my $file = tmpnam();
+
+		open(FILE, ">$file");
+		print FILE Net::EPP::Frame->new('command')->toString(2);
+		close(FILE);
+
+		my $cmd = ($ENV{'EDITOR'} || '/usr/bin/vi');
+		my ($cmd, @args) = split(/[ \t]+/, $cmd);
+		push(@args, $file);
+
+		if (0 != system($cmd, @args)) {
+			error("Command '$cmd' exited abnormally");
+
+		} else {
+			return send_file($file);
+
+		}
+	}
+}
+
+sub send_file {
+	my $file = shift;
+	my $frame;
+	eval { $frame = $xml->parse_file($file) };
+	if ($@ || !$frame) {
+		$@ =~ s/[\r\n]+$//g;
+		return error("Unable to parse '$file': $@");
+
+	} else {
+		return $epp->request($frame);
+
 	}
 }
 
@@ -900,40 +951,6 @@ sub create_domain {
 	$domain->{'authInfo'} = generate_authinfo() if (length($domain->{'authInfo'}) < 1);
 
 	return $epp->create_domain($domain);
-}
-
-sub handle_edit {
-	if (!$epp->connected) {
-		return error('Not connected');
-
-	} else {
-		my $file = tmpnam();
-
-		open(FILE, ">$file");
-		print FILE Net::EPP::Frame->new('command')->toString(2);
-		close(FILE);
-
-		my $cmd = ($ENV{'EDITOR'} || '/usr/bin/vi');
-		my ($cmd, @args) = split(/[ \t]+/, $cmd);
-		push(@args, $file);
-
-		if (0 != system($cmd, @args)) {
-			error("$cmd exited abnormally");
-
-		} else {
-			if (!-e $file || 0 == (stat($file))[7]) {
-				note("no data to send");
-
-			} else {
-				local $/ = undef;
-				open(FILE, $file);
-				my $frame = <FILE>;
-				close(FILE);
-				unlink($file);
-				return $epp->request($frame);
-			}
-		}
-	}
 }
 
 sub handle_key {
