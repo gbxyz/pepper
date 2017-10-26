@@ -122,15 +122,19 @@ This command creates the domain `NEW` using the same contacts and nameservers as
 
         create domain DOMAIN PARAMS
 
-This command creates a domain according to the parameters specified after the domain. `PARAMS` consists of pairs of name and value pairs as follows:
+This command creates a domain according to the parameters specified after the domain. `PARAMS` consists of pairs of name and (optionally quoted) value pairs as follows:
 
-- `period PERIOD` - the registration period. Defaults to 1 year.
-- `registrant ID` - the registrant.
-- `admin ID` - the admin contact
-- `tech ID` - the tech contact
-- `billing ID` - the billing contact
-- `ns HOST` - add a nameserver
-- `authInfo pw` - authInfo code. A random string will be used if not provided.
+- `period` - the registration period. Defaults to 1 year.
+- `registrant` - the registrant.
+- `admin` - the admin contact.
+- `tech` - the tech contact.
+- `billing` - the billing contact.
+- `ns` - add a nameserver.
+- `authInfo` - authInfo code. A random string will be used if not provided.
+
+Example:
+
+    pepper (id@host)> create domain example.xyz period 1 registrant sh8013 admin sh8013 tech sh8013 billing sh8013 ns ns0.example.com ns ns1.example.net
 
 ### Creating Host Objects
 
@@ -143,7 +147,34 @@ specified: IPv4 and IPv6 addresses are automatically detected.
 
 ### Creating Contact Objects
 
-Contact objects can currently only be created using the `clone` command.
+There are two ways of creating a contact:
+
+        clone contact OLD NEW
+
+This command creates the contact `NEW` using the same data as `OLD`.
+
+        create contact PARAMS
+
+This command creates a contact object according to the parameters specified. `PARAMS` consists of pairs of name and (optionally quoted) value pairs as follows:
+
+- `id` - contact ID. If not provided, a random 16-charater ID will be generated
+- `type` - specify the "type" attribute for the postal address information. Only one type is supported. Possible values are "int" (default) and "loc".
+- `name` - contact name
+- `org` - contact organisation
+- `street` - street address, may be provided multiple times
+- `city` - city
+- `sp` - state/province
+- `pc` - postcode
+- `cc` - ISO-3166-alpha2 country code
+- `voice` - E164 voice number
+- `fax` - E164 fax number
+- `email` - email address
+- `authInfo` - authInfo code. A random string will be used if not provided.
+
+Example:
+
+    pepper (id@host)> create contact id "sh8013" name "John Doe" org "Example Inc." type int street "123 Example Dr." city Dulles sp VA pc 20166-6503 cc US voice +1.7035555555 email jdoe@example.com
+    
 
 ## Object Updates
 
@@ -183,7 +214,7 @@ Syntax:
 
         update host HOSTNAME CHANGES
 
-The `CHANGES` argument consists of groups of three values: an action (ie `add`, `rem` or `chg`), followed by a property name (ie `addr`, `status` or `name`), followed by a value.
+The `CHANGES` argument consists of groups of three values: an action (ie `add`, `rem` or `chg`), followed by a property name (ie `addr`, `status` or `name`), followed by a value (which may be quoted).
 
 Examples:
 
