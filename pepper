@@ -829,12 +829,17 @@ sub handle_domain_clone {
 }
 
 sub generate_authinfo {
+	my $length = shift || 12;
 	my $authinfo;
 
 	my @chars = ('a'..'z'), ('A'..'Z'), (0-9);
-	$authinfo .= $chars[int(rand(scalar(@chars)))-1] while (length($authinfo) < 12);
+	$authinfo .= $chars[int(rand(scalar(@chars)))-1] while (length($authinfo) < $length);
 
 	return $authinfo;
+}
+
+sub generate_contact_id {
+	return lc(generate_authinfo(16));
 }
 
 sub handle_delete {
@@ -895,6 +900,9 @@ sub handle_create {
 		} elsif ($type eq 'domain') {
 			return create_domain(@_);
 
+		} elsif ($type eq 'contact') {
+			return create_contact(@_);
+
 		} else {
 			return error("invalid type '%s'", $type);
 
@@ -951,6 +959,51 @@ sub create_domain {
 	$domain->{'authInfo'} = generate_authinfo() if (length($domain->{'authInfo'}) < 1);
 
 	return $epp->create_domain($domain);
+}
+
+sub create_contact {
+	my $contact = {};
+
+	my $type = 'int';
+
+	my $postalInfo = { 'addr' => { 'street' => [] } };
+
+	for (my $i = 0 ; $i < scalar(@_) ; $i++) {
+		my $name = $_[$i];
+		my $value = $_[++$i];
+
+		if ($name eq 'type') {
+			if ($value =~ /^(int|loc)$/) {
+				$type = $value;
+
+			} else {
+				return error("Invalid postalInfo type '$value'");
+
+			}
+
+		} elsif ($name eq 'street') {
+			push(@{$postalInfo->{'addr'}->{'street'}}, $value);
+
+		} elsif ($name =~ /^(name|org)$/) {
+			$postalInfo->{$name} = $value;
+
+		} elsif ($name =~ /^(city|sp|pc|cc)$/) {
+			$postalInfo->{'addr'}->{$name} = $value;
+
+		} elsif ($name =~ /^(id|voice|fax|email)$/) {
+			$contact->{$name} = $value;
+
+		} else {
+			return error("Invalid property name '$name'");
+
+		}
+	}
+
+	$contact->{'postalInfo'}->{$type} = $postalInfo;
+	$contact->{'id'} = generate_contact_id() if (length($contact->{'id'}) < 1);
+	$contact->{'authInfo'} = generate_authinfo() if (length($contact->{'authInfo'}) < 1);
+
+	return $epp->create_contact($contact);
 }
 
 sub handle_key {
@@ -1376,25 +1429,29 @@ This command creates the domain C<NEW> using the same contacts and nameservers a
 
 	create domain DOMAIN PARAMS
 
-This command creates a domain according to the parameters specified after the domain. C<PARAMS> consists of pairs of name and value pairs as follows:
+This command creates a domain according to the parameters specified after the domain. C<PARAMS> consists of pairs of name and (optionally quoted) value pairs as follows:
 
 =over
 
-=item C<period PERIOD> - the registration period. Defaults to 1 year.
+=item C<period> - the registration period. Defaults to 1 year.
 
-=item C<registrant ID> - the registrant.
+=item C<registrant> - the registrant.
 
-=item C<admin ID> - the admin contact
+=item C<admin> - the admin contact.
 
-=item C<tech ID> - the tech contact
+=item C<tech> - the tech contact.
 
-=item C<billing ID> - the billing contact
+=item C<billing> - the billing contact.
 
-=item C<ns HOST> - add a nameserver
+=item C<ns> - add a nameserver.
 
-=item C<authInfo pw> - authInfo code. A random string will be used if not provided.
+=item C<authInfo> - authInfo code. A random string will be used if not provided.
 
 =back
+
+Example:
+
+    pepper (id@host)> create domain example.xyz period 1 registrant sh8013 admin sh8013 tech sh8013 billing sh8013 ns ns0.example.com ns ns1.example.net
 
 =head3 Creating Host Objects
 
@@ -1407,8 +1464,50 @@ specified: IPv4 and IPv6 addresses are automatically detected.
 
 =head3 Creating Contact Objects
 
-Contact objects can currently only be created using the C<clone> command.
+There are two ways of creating a contact:
 
+	clone contact OLD NEW
+
+This command creates the contact C<NEW> using the same data as C<OLD>.
+
+	create contact PARAMS
+
+This command creates a contact object according to the parameters specified. C<PARAMS> consists of pairs of name and (optionally quoted) value pairs as follows:
+
+=over
+
+=item C<id> - contact ID. If not provided, a random 16-charater ID will be generated
+
+=item C<type> - specify the "type" attribute for the postal address information. Only one type is supported. Possible values are "int" (default) and "loc".
+
+=item C<name> - contact name
+
+=item C<org> - contact organisation
+
+=item C<street> - street address, may be provided multiple times
+
+=item C<city> - city
+
+=item C<sp> - state/province
+
+=item C<pc> - postcode
+
+=item C<cc> - ISO-3166-alpha2 country code
+
+=item C<voice> - E164 voice number
+
+=item C<fax> - E164 fax number
+
+=item C<email> - email address
+
+=item C<authInfo> - authInfo code. A random string will be used if not provided.
+
+=back
+
+Example:
+
+    pepper (id@host)> create contact id "sh8013" name "John Doe" org "Example Inc." type int street "123 Example Dr." city Dulles sp VA pc 20166-6503 cc US voice +1.7035555555 email jdoe@example.com
+    
 =head2 Object Updates
 
 Objects may be updated using the C<update> command.
@@ -1447,7 +1546,7 @@ Syntax:
 
 	update host HOSTNAME CHANGES
 
-The C<CHANGES> argument consists of groups of three values: an action (ie C<add>, C<rem> or C<chg>), followed by a property name (ie C<addr>, C<status> or C<name>), followed by a value.
+The C<CHANGES> argument consists of groups of three values: an action (ie C<add>, C<rem> or C<chg>), followed by a property name (ie C<addr>, C<status> or C<name>), followed by a value (which may be quoted).
 
 Examples:
 
