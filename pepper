@@ -990,7 +990,7 @@ sub create_contact {
 		} elsif ($name =~ /^(city|sp|pc|cc)$/) {
 			$postalInfo->{'addr'}->{$name} = $value;
 
-		} elsif ($name =~ /^(id|voice|fax|email)$/) {
+		} elsif ($name =~ /^(id|voice|fax|email|authinfo)$/) {
 			$contact->{$name} = $value;
 
 		} else {
@@ -1001,7 +1001,7 @@ sub create_contact {
 
 	$contact->{'postalInfo'}->{$type} = $postalInfo;
 	$contact->{'id'} = generate_contact_id() if (length($contact->{'id'}) < 1);
-	$contact->{'authInfo'} = generate_authinfo() if (length($contact->{'authInfo'}) < 1);
+	$contact->{'authInfo'} = generate_authinfo() if (length($contact->{'authinfo'}) < 1);
 
 	return $epp->create_contact($contact);
 }
@@ -1500,7 +1500,7 @@ This command creates a contact object according to the parameters specified. C<P
 
 =item C<email> - email address
 
-=item C<authInfo> - authInfo code. A random string will be used if not provided.
+=item C<authinfo> - authInfo code. A random string will be used if not provided.
 
 =back
 
