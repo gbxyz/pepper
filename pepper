@@ -1,7 +1,9 @@
 #!/usr/bin/perl
+#
 # Copyright CentralNic Group plc.
 # This program is Free Software; you can use it and/or modify it under the same
 # terms as Perl itself.
+#
 
 #
 # Pepper::EPPClient is our own wrapper around Net::EPP::Simple
@@ -188,7 +190,6 @@ GetOptions($opt,
 	'port=i',
 	'timeout=i',
 	'help',
-	'exec=s',
 	'insecure',
 	'lang=s',
 	'debug',
@@ -236,18 +237,24 @@ if ($opt->{'help'}) {
 	exit;
 }
 
-my $term = Term::ReadLine->new('pepper');
+our $term;
+$term = Term::ReadLine->new('pepper') if (-t STDIN && -t STDOUT);
+
+my $outfh = ($term ? \*STDOUT : \*STDERR);
+
 my $prompt = 'pepper> ';
 
 my $histfile = $ENV{'HOME'}.'/.pepper_history';
 
 my $xml = XML::LibXML->new;
 
-$term->ReadHistory($histfile) if ('Term::ReadLine::Gnu' eq $term->ReadLine);
+if ($term) {
+	$term->ReadHistory($histfile) if ('Term::ReadLine::Gnu' eq $term->ReadLine);
 
-note('Welcome to pepper!');
+	note('Welcome to pepper!');
 
-note(color('yellow').'> For best results, install Term::ReadLine::Gnu <'.color('reset')) if ('Term::ReadLine::Gnu' ne $term->ReadLine);
+	note(color('yellow').'> For best results, install Term::ReadLine::Gnu <'.color('reset')) if ($term && 'Term::ReadLine::Gnu' ne $term->ReadLine);
+}
 
 my $epp = Pepper::EPPClient->new(
 	'host'		=> '',
@@ -259,8 +266,6 @@ my $epp = Pepper::EPPClient->new(
 	'ca_file'	=> Mozilla::CA::SSL_ca_file(),
 	'lang'		=> ($opt->{'lang'} ? $opt->{'lang'} : 'en'),
 );
-
-my $interactive;
 
 execute_command(sprintf('timeout %d',	$opt->{'timeout'}))		if ($opt->{'timeout'});
 execute_command(sprintf('port %d',	$opt->{'port'}))		if ($opt->{'port'});
@@ -279,18 +284,13 @@ if ($epp->{'user'} ne '' && $epp->{'pass'} ne '') {
 
 }
 
-if ($opt->{'exec'} ne '') {
-	if (!$epp->authenticated) {
-		fatal('not logged in');
+if ($term) {
+	note("Entering interactive mode, exit with Ctrl-D, Ctrl-C or 'exit'");
 
-	} else {
-		execute_command($opt->{'exec'});
-		exit;
+} else {
+	note("Entering batch mode");
 
-	}
 }
-
-$interactive = 1;
 
 #
 # main loop
@@ -299,43 +299,68 @@ my $last;
 while (1) {
 	$prompt = sprintf('pepper (%s@%s)> ', $epp->{'user'}, $epp->{'host'}) if ($epp->authenticated);
 
-	my $command = $term->readline($prompt);
+	my $command;
+	if ($term) {
+		$command = $term->readline($prompt);
+
+	} else {
+		$command = <STDIN>;
+		chomp($command);
+
+		# remove any trailing comment
+		$command =~ s/\#.*//g;
+	}
+
 	if (!defined($command)) {
-		print "\n";
 		last;
 
 	} elsif ($command ne '') {
-		if ($command eq '!!') {
+		if ($term && $command eq '!!') {
 			execute_command($last) if ($last ne '');
 
 		} else {
 			$last = $command;
+			note("Executing command '%s'", $command) if (!$term);
 			execute_command($command);
 
 		}
 	}
 }
 
-$term->WriteHistory($histfile) if ('Term::ReadLine::Gnu' eq $term->ReadLine);
+$term->WriteHistory($histfile) if ($term && 'Term::ReadLine::Gnu' eq $term->ReadLine);
 
 handle_logout() if ($epp->connected && $epp->authenticated);
 $epp->disconnect if ($epp->connected);
 
 note('Bye!');
 
+exit(0);
+
 sub execute_command {
 	my $line = shift;
+
 	return if ($line eq '');
 
 	my @args = shellwords($line);
+
 	my $command = shift(@args);
 
+	my $fail;
+	if (!$term && $command =~/^!/) {
+		$fail = 1;
+		$command = substr($command, 1);
+	}
+
 	if (!defined($handlers->{$command})) {
-		error("Unknown command '$command'") if ($interactive);
+		error("Unknown command '$command'");
+		handle_exit() if (!$term);
 
 	} else {
 		&{$handlers->{$command}}(@args);
-
+		if (!$term && $fail) {
+			note("%s%04d%s %s", color($Net::EPP::Simple::Code < 2000 ? 'green' : 'red'), $Net::EPP::Simple::Code, color('reset'), $Net::EPP::Simple::Message);
+			fatal($Net::EPP::Simple::Message) if ($Net::EPP::Simple::Code > 1999);
+		}
 	}
 }
 
@@ -476,8 +501,13 @@ sub handle_login {
 		$epp->{'quiet'} = ($verbose ? 0 : 1);
 		my $result = $epp->_login;
 		$epp->{'quiet'} = 0;
-		note("%s%04d%s %s", color($Net::EPP::Simple::Code < 2000 ? 'green' : 'red'), $Net::EPP::Simple::Code, color('reset'), $Net::EPP::Simple::Message);
-		note('Logged in OK!') if ($result);
+		if ($result) {
+			note('Logged in OK!');
+
+		} else {
+			error("%s%04d%s %s", color($Net::EPP::Simple::Code < 2000 ? 'green' : 'red'), $Net::EPP::Simple::Code, color('reset'), $Net::EPP::Simple::Message);
+
+		}
 		return $result;
 	}
 }
@@ -1233,14 +1263,20 @@ sub contact_update {
 
 sub note {
 	my ($fmt, @args) = @_;
-	my $msg = sprintf($fmt, @args);
-	print $msg."\n";
+	my $msg = '*** '.sprintf($fmt, @args);
+	$outfh->print($msg."\n");
 }
 
 sub error {
 	my ($fmt, @args) = @_;
-	note(color('red')."Error: ".color('reset').$fmt, @args);
-	return undef;
+	if ($term) {
+		note(color('red')."Error: ".color('reset').$fmt, @args);
+		return undef;
+
+	} else {
+		fatal(@_);
+
+	}
 }
 
 sub fatal {
