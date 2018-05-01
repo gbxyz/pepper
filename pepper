@@ -1141,7 +1141,7 @@ sub domain_update {
 				$frame->chgRegistrant($value);
 
 			} elsif ('authinfo' eq $type) {
-				$frame->chgAuthinfo($value);
+				$frame->chgAuthInfo($value);
 
 			} else {
 				return error("Don't know how to change '$type'");
