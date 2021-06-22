@@ -859,10 +859,10 @@ sub handle_domain_clone {
 }
 
 sub generate_authinfo {
-	my $length = shift || 12;
+	my $length = shift || 16;
 	my $authinfo;
 
-	my @chars = ('a'..'z'), ('A'..'Z'), (0-9);
+	my @chars = ('a'..'z'), ('A'..'Z'), (0-9), ('!', '#', '$', '%', '&', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=', '>', '?', '[', ']', '^', '_', '{', '|', '}', '~');
 	$authinfo .= $chars[int(rand(scalar(@chars)))-1] while (length($authinfo) < $length);
 
 	return $authinfo;
@@ -1020,7 +1020,7 @@ sub create_contact {
 		} elsif ($name =~ /^(city|sp|pc|cc)$/) {
 			$postalInfo->{'addr'}->{$name} = $value;
 
-		} elsif ($name eq 'authinfo') {
+		} elsif (lc($name) eq 'authinfo') {
 			$contact->{'authInfo'} = $value;
 
 		} elsif ($name =~ /^(id|voice|fax|email)$/) {
@@ -1034,7 +1034,7 @@ sub create_contact {
 
 	$contact->{'postalInfo'}->{$type} = $postalInfo;
 	$contact->{'id'} = generate_contact_id() if (length($contact->{'id'}) < 1);
-	$contact->{'authInfo'} = generate_authinfo() if (length($contact->{'authinfo'}) < 1);
+	$contact->{'authInfo'} = generate_authinfo() if (length($contact->{'authInfo'}) < 1);
 
 	return $epp->create_contact($contact);
 }
