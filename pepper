@@ -862,8 +862,10 @@ sub generate_authinfo {
 	my $length = shift || 16;
 	my $authinfo;
 
-	my @chars = ('a'..'z'), ('A'..'Z'), (0-9), ('!', '#', '$', '%', '&', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=', '>', '?', '[', ']', '^', '_', '{', '|', '}', '~');
-	$authinfo .= $chars[int(rand(scalar(@chars)))-1] while (length($authinfo) < $length);
+	my @chars = (('a'..'z'), ('A'..'Z'), (0-9), ('!', '#', '$', '%', '&', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=', '>', '?', '[', ']', '^', '_', '{', '|', '}', '~'));
+	my $c = scalar(@chars);
+
+	$authinfo .= $chars[int($c * rand())-1] while (length($authinfo) < $length);
 
 	return $authinfo;
 }
