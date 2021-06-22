@@ -1020,7 +1020,10 @@ sub create_contact {
 		} elsif ($name =~ /^(city|sp|pc|cc)$/) {
 			$postalInfo->{'addr'}->{$name} = $value;
 
-		} elsif ($name =~ /^(id|voice|fax|email|authinfo)$/) {
+		} elsif ($name eq 'authinfo') {
+			$contact->{'authInfo'} = $value;
+
+		} elsif ($name =~ /^(id|voice|fax|email)$/) {
 			$contact->{$name} = $value;
 
 		} else {
