@@ -1005,7 +1005,7 @@ sub create_contact {
 		my $value = $_[++$i];
 
 		if ($name eq 'type') {
-			if ($value =~ /^(int|loc)$/) {
+			if ($value eq 'int' || $value eq 'loc') {
 				$type = $value;
 
 			} else {
