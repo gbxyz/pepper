@@ -176,6 +176,8 @@ use Text::ParseWords;
 use XML::LibXML;
 use strict;
 
+my $VERSION = '0.99.0';
+
 my $opt = {
 	'port'		=> 700,
 	'timeout'	=> 15,
@@ -195,6 +197,7 @@ GetOptions($opt,
 	'debug',
 	'cert=s',
 	'key=s',
+    'login-security',
 );
 
 my $handlers = {
@@ -265,6 +268,8 @@ my $epp = Pepper::EPPClient->new(
 	'verify'	=> ($opt->{'insecure'} ? undef : 1),
 	'ca_file'	=> Mozilla::CA::SSL_ca_file(),
 	'lang'		=> ($opt->{'lang'} ? $opt->{'lang'} : 'en'),
+    'appname'   => sprintf('Pepper %s', $VERSION),
+    'login_security' => $opt->{'login-security'},
 );
 
 execute_command(sprintf('timeout %d',	$opt->{'timeout'}))		if ($opt->{'timeout'});
@@ -1321,6 +1326,8 @@ Available command-line options:
 =item C<--pass=PASS> - sets the client password.
 
 =item C<--newpw=PASS> - specify a new password to replace the current password.
+
+=item C<--login-security> - force the use of the Login Security extension (RFC 8807).
 
 =item C<--cert=FILE> - specify the client certificate to use to connect.
 
