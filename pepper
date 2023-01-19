@@ -184,11 +184,12 @@ my $opt = {
 	'lang'		=> 'en',
 };
 
-GetOptions($opt,
+my $result = GetOptions($opt,
 	'host=s',
 	'user=s',
 	'pass=s',
 	'newpw=s',
+	'exec=s',
 	'port=i',
 	'timeout=i',
 	'help',
@@ -199,6 +200,14 @@ GetOptions($opt,
 	'key=s',
     'login-security',
 );
+
+if (!$result || $opt->{'help'}) {
+	pod2usage(
+		'-verbose'	=> 99,
+		'-sections'	=> 'USAGE',
+	);
+	exit;
+}
 
 my $handlers = {
 	'timeout'	=> \&handle_timeout,
@@ -231,14 +240,6 @@ my $handlers = {
 	'restore'	=> \&handle_restore,
 	'update'	=> \&handle_update,
 };
-
-if ($opt->{'help'}) {
-	pod2usage(
-		'-verbose'	=> 99,
-		'-sections'	=> 'USAGE',
-	);
-	exit;
-}
 
 our $term;
 $term = Term::ReadLine->new('pepper') if (-t STDIN && -t STDOUT);
@@ -289,7 +290,11 @@ if ($epp->{'user'} ne '' && $epp->{'pass'} ne '') {
 
 }
 
-if ($term) {
+if ($opt->{'exec'}) {
+    execute_command($opt->{'exec'});
+    handle_exit();
+
+} elsif ($term) {
 	note("Entering interactive mode, exit with Ctrl-D, Ctrl-C or 'exit'");
 
 } else {
