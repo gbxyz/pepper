@@ -1425,7 +1425,7 @@ This checks the availability of an object. C<TYPE> is one of C<domain>, C<host>,
 
 	info TYPE OBJECT [PARAMS]
 
-Get object information. C<TYPE> is one of C<domain>, C<host>, C<contact>. For domain objects, C<PARAMS> can be C<AUTHINFO HOSTS>, where C<AUTHINFO> is the domain's authInfo code, and C<HOSTS> is the value of the "hosts" attribute (ie C<all>, C<del>, C<sub> or C<none>). If you want to set C<HOSTS> but don't know the authinfo, use an empty quoted string (ie C<"">) as C<AUTHINFO>.
+Get object information. C<TYPE> is one of C<domain>, C<host>, C<contact>. For domain objects, C<PARAMS> can be C<AUTHINFO [HOSTS]>, where C<AUTHINFO> is the domain's authInfo code, and the optional C<HOSTS> is the value of the "hosts" attribute (ie C<all>, which is the default, or C<del>, C<sub>, or C<none>). If you want to set C<HOSTS> but don't know the authInfo, use an empty quoted string (ie C<"">) as C<AUTHINFO>.
 
 For contact objects, C<PARAMS> can be the contact's authInfo.
 
@@ -1439,13 +1439,13 @@ For contact objects, C<PARAMS> can be the contact's authInfo.
 
 =item * C<clone TYPE OLD NEW> - clone a domain or contact object C<OLD> into a new object identified by C<NEW>. C<TYPE> is one of C<domain> or C<contact>.
 
-=item * C<update TYPE CHANGES> - update an object. C<TYPE> is one of C<domain>, C<host>, or C<contact>. See L<Object Updates> for further information.
+=item * C<update TYPE OBJECT CHANGES> - update an object. C<TYPE> is one of C<domain>, C<host>, or C<contact>. See L<Object Updates> for further information.
 
 =item * C<renew DOMAIN PERIOD [EXDATE]> - renew a domain (1 year by default). If you do not provide the C<EXDATE> argument, pepper will perform an C<E<lt>infoE<gt>> command to get it from the server.
 
 =item * C<transfer PARAMS> - object transfer management See L<Object Transfers> for more information.
 
-=item * C<delete TYPE ID> - delete an object. C<TYPE> is one of C<domain>, C<host>, or C<contact>.
+=item * C<delete TYPE OBJECT> - delete an object. C<TYPE> is one of C<domain>, C<host>, or C<contact>.
 
 =item * C<restore DOMAIN> - submit an RGP restore request for a domain.
 
@@ -1455,7 +1455,7 @@ For contact objects, C<PARAMS> can be the contact's authInfo.
 
 =over
 
-=item * C<send FILE> - send the contents of C<FILE>.
+=item * C<send FILE> - send the contents of C<FILE> as an EPP command.
 
 =item * C<BEGIN> - begin inputting a frame to send to the server, end with "C<END>".
 
@@ -1465,7 +1465,7 @@ For contact objects, C<PARAMS> can be the contact's authInfo.
 
 =head2 Claims and fee Checks
 
-Pepper provides limited support for the the launch and fee extensions:
+Pepper provides limited support for the the Launch and Fee extensions:
 
 =head3 Claims Check
 
@@ -1513,7 +1513,7 @@ This command creates a domain according to the parameters specified after the do
 
 =item * C<ns> - add a nameserver.
 
-=item * C<authInfo> - authInfo code. A random string will be used if not provided.
+=item * C<authinfo> - authInfo code. A random string will be used if not provided.
 
 =back
 

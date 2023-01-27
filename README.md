@@ -122,11 +122,11 @@ two.
         info TYPE OBJECT [PARAMS]
 
 Get object information. `TYPE` is one of `domain`, `host`, `contact`.
-For domain objects, `PARAMS` can be `AUTHINFO HOSTS`, where `AUTHINFO`
-is the domain's authInfo code, and `HOSTS` is the value of the "hosts"
-attribute (ie `all`, `del`, `sub` or `none`). If you want to set `HOSTS`
-but don't know the authinfo, use an empty quoted string (ie `""`) as
-`AUTHINFO`.
+For domain objects, `PARAMS` can be `AUTHINFO [HOSTS]`, where `AUTHINFO`
+is the domain's authInfo code, and the optional `HOSTS` is the value of
+the "hosts" attribute (ie `all`, which is the default, or `del`, `sub`,
+or `none`). If you want to set `HOSTS` but don't know the authInfo, use
+an empty quoted string (ie `""`) as `AUTHINFO`.
 
 For contact objects, `PARAMS` can be the contact's authInfo.
 
@@ -139,28 +139,28 @@ For contact objects, `PARAMS` can be the contact's authInfo.
 -   `clone TYPE OLD NEW` - clone a domain or contact object `OLD` into a
     new object identified by `NEW`. `TYPE` is one of `domain` or
     `contact`.
--   `update TYPE CHANGES` - update an object. `TYPE` is one of `domain`,
-    `host`, or `contact`. See ["Object Updates"](#object-updates) for
-    further information.
+-   `update TYPE OBJECT CHANGES` - update an object. `TYPE` is one of
+    `domain`, `host`, or `contact`. See ["Object
+    Updates"](#object-updates) for further information.
 -   `renew DOMAIN PERIOD [EXDATE]` - renew a domain (1 year by default).
     If you do not provide the `EXDATE` argument, pepper will perform an
     `<info>` command to get it from the server.
 -   `transfer PARAMS` - object transfer management See ["Object
     Transfers"](#object-transfers) for more information.
--   `delete TYPE ID` - delete an object. `TYPE` is one of `domain`,
+-   `delete TYPE OBJECT` - delete an object. `TYPE` is one of `domain`,
     `host`, or `contact`.
 -   `restore DOMAIN` - submit an RGP restore request for a domain.
 
 ## Miscellaneous Commands
 
--   `send FILE` - send the contents of `FILE`.
+-   `send FILE` - send the contents of `FILE` as an EPP command.
 -   `BEGIN` - begin inputting a frame to send to the server, end with
     "`END`".
 -   `edit` - Invoke `$EDITOR` and send the resulting file.
 
 ## Claims and fee Checks
 
-Pepper provides limited support for the the launch and fee extensions:
+Pepper provides limited support for the the Launch and Fee extensions:
 
 ### Claims Check
 
@@ -206,7 +206,7 @@ quoted) value pairs as follows:
 -   `tech` - the tech contact.
 -   `billing` - the billing contact.
 -   `ns` - add a nameserver.
--   `authInfo` - authInfo code. A random string will be used if not
+-   `authinfo` - authInfo code. A random string will be used if not
     provided.
 
 Example:
