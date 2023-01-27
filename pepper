@@ -261,26 +261,26 @@ if ($term) {
 }
 
 my $epp = Pepper::EPPClient->new(
-	'host'		=> '',
-	'connect'	=> undef,
-	'debug'		=> $opt->{'debug'},
-	'login'		=> undef,
-	'reconnect'	=> 0,
-	'verify'	=> ($opt->{'insecure'} ? undef : 1),
-	'ca_file'	=> Mozilla::CA::SSL_ca_file(),
-	'lang'		=> ($opt->{'lang'} ? $opt->{'lang'} : 'en'),
-    'appname'   => sprintf('Pepper %s', $VERSION),
-    'login_security' => $opt->{'login-security'},
+	'host'		        => '',
+	'connect'	        => undef,
+	'debug'		        => $opt->{'debug'},
+	'login'		        => undef,
+	'reconnect'	        => 0,
+	'verify'	        => ($opt->{'insecure'} ? undef : 1),
+	'ca_file'	        => Mozilla::CA::SSL_ca_file(),
+	'lang'		        => ($opt->{'lang'} ? $opt->{'lang'} : 'en'),
+    'appname'           => sprintf('Pepper %s', $VERSION),
+    'login_security'    => $opt->{'login-security'},
 );
 
-execute_command(sprintf('timeout %d',	$opt->{'timeout'}))		if ($opt->{'timeout'});
-execute_command(sprintf('port %d',	$opt->{'port'}))		if ($opt->{'port'});
-execute_command(sprintf('host "%s"',	quotemeta($opt->{'host'})))	if ($opt->{'host'});
-execute_command(sprintf('id "%s"',	quotemeta($opt->{'user'})))	if ($opt->{'user'});
-execute_command(sprintf('pw "%s"',	quotemeta($opt->{'pass'})))	if ($opt->{'pass'});
-execute_command(sprintf('newpw "%s"',	quotemeta($opt->{'newpw'})))	if ($opt->{'newpw'});
-execute_command(sprintf('cert "%s"',	quotemeta($opt->{'cert'})))	if ($opt->{'cert'});
-execute_command(sprintf('key "%s"',	quotemeta($opt->{'key'})))	if ($opt->{'key'});
+execute_command(sprintf('timeout %d',	$opt->{'timeout'}))		        if ($opt->{'timeout'});
+execute_command(sprintf('port %d',	$   opt->{'port'}))		            if ($opt->{'port'});
+execute_command(sprintf('host "%s"',	quotemeta($opt->{'host'})))	    if ($opt->{'host'});
+execute_command(sprintf('id "%s"',	    quotemeta($opt->{'user'})))	    if ($opt->{'user'});
+execute_command(sprintf('pw "%s"',	    quotemeta($opt->{'pass'})))	    if ($opt->{'pass'});
+execute_command(sprintf('newpw "%s"',	quotemeta($opt->{'newpw'})))    if ($opt->{'newpw'});
+execute_command(sprintf('cert "%s"',	quotemeta($opt->{'cert'})))	    if ($opt->{'cert'});
+execute_command(sprintf('key "%s"',	    quotemeta($opt->{'key'})))	    if ($opt->{'key'});
 
 if ($epp->{'user'} ne '' && $epp->{'pass'} ne '') {
 	execute_command('login');
@@ -330,9 +330,9 @@ while (1) {
 
 		} else {
 			$last = $command;
+
 			note("Executing command '%s'", $command) if (!$term);
 			execute_command($command);
-
 		}
 	}
 }
