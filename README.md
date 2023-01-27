@@ -4,7 +4,7 @@ Pepper - A command-line EPP client.
 
 # DESCRIPTION
 
-Pepper is a command-line client for the EPP protocol. It's written in Perl and uses the [Net::EPP](https://metacpan.org/pod/Net::EPP) module.
+Pepper is a command-line client for the EPP protocol. It's written in Perl and uses the [Net::EPP](https://metacpan.org/pod/Net%3A%3AEPP) module.
 
 # USAGE
 
@@ -19,6 +19,7 @@ Available command-line options:
 - `--user=USER` - sets the client ID.
 - `--pass=PASS` - sets the client password.
 - `--newpw=PASS` - specify a new password to replace the current password.
+- `--login-security` - force the use of the Login Security extension (RFC 8807).
 - `--cert=FILE` - specify the client certificate to use to connect.
 - `--key=FILE` - specify the private key for the client certificate.
 - `--exec=COMMAND` - specify a command to execute. If not provided, pepper goes into interactive mode.
@@ -26,9 +27,16 @@ Available command-line options:
 - `--lang=LANG` - set the language when logging in.
 - `--debug` - debug mode, makes `Net::EPP::Simple` verbose.
 
+# USAGE MODES
+
+Pepper supports two usage modes:
+
+- 1. Interactive mode: this is the default mode. Pepper will provide a command prompt (with history and line editing capabilities) allowing you to input commands manually.
+- 2. Script mode: if Pepper's `STDIN` is fed a stream of text (ie it's not attached to a terminal) then commands will be read from `STDIN` and executed sequentially. Pepper will exit once EOF is reached.
+
 # SYNTAX
 
-Once running, Pepper provides a simple command-line interface. The available commands are listed below.
+Once running in interactive mode, Pepper provides a simple command-line interface. The available commands are listed below.
 
 ## Getting Help
 
@@ -169,7 +177,7 @@ This command creates a contact object according to the parameters specified. `PA
 - `voice` - E164 voice number
 - `fax` - E164 fax number
 - `email` - email address
-- `authInfo` - authInfo code. A random string will be used if not provided.
+- `authinfo` - authInfo code. A random string will be used if not provided.
 
 Example:
 
@@ -246,17 +254,31 @@ where:
 - `AUTHINFO` - authInfo code (used with `request` only)
 - `PERIOD` - additional validity period (used with domain `request` only)
 
+## Errors
+
+If you prefix a command with a `!` character, then Pepper will end the session if an EPP command fails (that is, if the result code of the response is 2000 or higher).
+
+This is mostly useful in scripting mode where you may want the script to terminate if an error occurs.
+
+Example usage:
+
+    !create domain example.com authinfo foo2bar
+    update domain example.com add ns ns0.example.com
+
+In the above example, Pepper will end the session if the first command fails, since there is no point in running the second command if the first has failed.
+
 # INSTALLATION
 
 Pepper uses these modules:
 
-- [Term::ANSIColor](https://metacpan.org/pod/Term::ANSIColor) (version 2.01 or higher)
-- [Term::ReadLine::Gnu](https://metacpan.org/pod/Term::ReadLine::Gnu) (and [Term::ReadLine](https://metacpan.org/pod/Term::ReadLine))
-- [Net::EPP::Simple](https://metacpan.org/pod/Net::EPP::Simple) (from [Net::EPP](https://metacpan.org/pod/Net::EPP), which in turn uses [IO::Socket::SSL](https://metacpan.org/pod/IO::Socket::SSL) and [XML::LibXML](https://metacpan.org/pod/XML::LibXML)). Pepper usually requires the most recent "unstable" version which can be obtained from [https://gitlab.centralnic.com/centralnic/perl-net-epp](https://gitlab.centralnic.com/centralnic/perl-net-epp).
-- [Text::ParseWords](https://metacpan.org/pod/Text::ParseWords)
-- [Mozilla::CA](https://metacpan.org/pod/Mozilla::CA)
+- [Term::ANSIColor](https://metacpan.org/pod/Term%3A%3AANSIColor) (version 2.01 or higher)
+- [Net::EPP::Simple](https://metacpan.org/pod/Net%3A%3AEPP%3A%3ASimple) (from [Net::EPP](https://metacpan.org/pod/Net%3A%3AEPP), which in turn uses [IO::Socket::SSL](https://metacpan.org/pod/IO%3A%3ASocket%3A%3ASSL) and [XML::LibXML](https://metacpan.org/pod/XML%3A%3ALibXML)). Pepper usually requires the most recent "unstable" version which can be obtained from [https://gitlab.centralnic.com/centralnic/perl-net-epp](https://gitlab.centralnic.com/centralnic/perl-net-epp).
+- [Text::ParseWords](https://metacpan.org/pod/Text%3A%3AParseWords)
+- [Mozilla::CA](https://metacpan.org/pod/Mozilla%3A%3ACA)
 
-They can be installed using one of the various CPAN clients, or as packages from your operating system vendor.
+If [Term::ReadLine::Gnu](https://metacpan.org/pod/Term%3A%3AReadLine%3A%3AGnu) is available, then Pepper can provide a richer interactive command line, with support for history and rich command editing.
+
+These modules can be installed using one of the various CPAN clients, or as packages from your operating system vendor.
 
 # LICENSE
 

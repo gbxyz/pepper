@@ -1318,39 +1318,51 @@ Available command-line options:
 
 =over
 
-=item C<--help> - show help and exit.
+=item * C<--help> - show help and exit.
 
-=item C<--host=HOST> - sets the host to connect to.
+=item * C<--host=HOST> - sets the host to connect to.
 
-=item C<--port=PORT> - sets the port. Defaults to 700.
+=item * C<--port=PORT> - sets the port. Defaults to 700.
 
-=item C<--timeout=TIMEOUT> - sets the timeout. Defaults to 3.
+=item * C<--timeout=TIMEOUT> - sets the timeout. Defaults to 3.
 
-=item C<--user=USER> - sets the client ID.
+=item * C<--user=USER> - sets the client ID.
 
-=item C<--pass=PASS> - sets the client password.
+=item * C<--pass=PASS> - sets the client password.
 
-=item C<--newpw=PASS> - specify a new password to replace the current password.
+=item * C<--newpw=PASS> - specify a new password to replace the current password.
 
-=item C<--login-security> - force the use of the Login Security extension (RFC 8807).
+=item * C<--login-security> - force the use of the Login Security extension (RFC 8807).
 
-=item C<--cert=FILE> - specify the client certificate to use to connect.
+=item * C<--cert=FILE> - specify the client certificate to use to connect.
 
-=item C<--key=FILE> - specify the private key for the client certificate.
+=item * C<--key=FILE> - specify the private key for the client certificate.
 
-=item C<--exec=COMMAND> - specify a command to execute. If not provided, pepper goes into interactive mode.
+=item * C<--exec=COMMAND> - specify a command to execute. If not provided, pepper goes into interactive mode.
 
-=item C<--insecure> - disable SSL certificate checks.
+=item * C<--insecure> - disable SSL certificate checks.
 
-=item C<--lang=LANG> - set the language when logging in.
+=item * C<--lang=LANG> - set the language when logging in.
 
-=item C<--debug> - debug mode, makes C<Net::EPP::Simple> verbose.
+=item * C<--debug> - debug mode, makes C<Net::EPP::Simple> verbose.
+
+=back
+
+=head1 USAGE MODES
+
+Pepper supports two usage modes:
+
+=over
+
+=item 1. Interactive mode: this is the default mode. Pepper will provide a command prompt (with history and line editing capabilities) allowing you to input commands manually.
+
+=item 2. Script mode: if Pepper's C<STDIN> is fed a stream of text (ie it's not attached to a terminal) then commands will be read from C<STDIN> and executed sequentially. Pepper will exit once EOF is reached.
 
 =back
 
 =head1 SYNTAX
 
-Once running, Pepper provides a simple command-line interface. The available commands are listed below.
+Once running in interactive mode, Pepper provides a simple command-line interface. The available commands are listed below.
 
 =head2 Getting Help
 
@@ -1360,23 +1372,23 @@ Use C<help COMMAND> at any time to get information about that command. Where a c
 
 =over
 
-=item C<host HOST> - sets the host to connect to.
+=item * C<host HOST> - sets the host to connect to.
 
-=item C<port PORT> - sets the port. Defaults to 700.
+=item * C<port PORT> - sets the port. Defaults to 700.
 
-=item C<ssl on|off> - enable/disable SSL (default is on)
+=item * C<ssl on|off> - enable/disable SSL (default is on)
 
-=item C<key FILE> - sets the private key
+=item * C<key FILE> - sets the private key
 
-=item C<cert FILE> - sets the client certificate.
+=item * C<cert FILE> - sets the client certificate.
 
-=item C<timeout TIMEOUT> - sets the timeout
+=item * C<timeout TIMEOUT> - sets the timeout
 
-=item C<connect> - connect to the server.
+=item * C<connect> - connect to the server.
 
-=item C<hello> - gets the greeting from server.
+=item * C<hello> - gets the greeting from server.
 
-=item C<exit> - quit the program (logging out if necessary)
+=item * C<exit> - quit the program (logging out if necessary)
 
 =back
 
@@ -1384,17 +1396,17 @@ Use C<help COMMAND> at any time to get information about that command. Where a c
 
 =over
 
-=item C<id USER> - sets the client ID.
+=item * C<id USER> - sets the client ID.
 
-=item C<pw PASS> - sets the client password.
+=item * C<pw PASS> - sets the client password.
 
-=item C<login> - log in.
+=item * C<login> - log in.
 
-=item C<logout> - log out.
+=item * C<logout> - log out.
 
-=item C<poll req> - requests the most recent poll message.
+=item * C<poll req> - requests the most recent poll message.
 
-=item C<poll ack ID> - acknowledge the poll message with ID C<ID>.
+=item * C<poll ack ID> - acknowledge the poll message with ID C<ID>.
 
 =back
 
@@ -1418,21 +1430,21 @@ For contact objects, C<PARAMS> can be the contact's authInfo.
 
 =over
 
-=item C<create domain PARAMS> - create a domain object. See L<Creating Domain Objects> for more information.
+=item * C<create domain PARAMS> - create a domain object. See L<Creating Domain Objects> for more information.
 
-=item C<create host PARAMS> - create a host object. See L<Creating Host Objects> for more information.
+=item * C<create host PARAMS> - create a host object. See L<Creating Host Objects> for more information.
 
-=item C<clone TYPE OLD NEW> - clone a domain or contact object C<OLD> into a new object identified by C<NEW>. C<TYPE> is one of C<domain> or C<contact>.
+=item * C<clone TYPE OLD NEW> - clone a domain or contact object C<OLD> into a new object identified by C<NEW>. C<TYPE> is one of C<domain> or C<contact>.
 
-=item C<update TYPE CHANGES> - update an object. C<TYPE> is one of C<domain>, C<host>, or C<contact>. See L<Object Updates> for further information.
+=item * C<update TYPE CHANGES> - update an object. C<TYPE> is one of C<domain>, C<host>, or C<contact>. See L<Object Updates> for further information.
 
-=item C<renew DOMAIN PERIOD [EXDATE]> - renew a domain (1 year by default). If you do not provide the C<EXDATE> argument, pepper will perform an C<E<lt>infoE<gt>> command to get it from the server.
+=item * C<renew DOMAIN PERIOD [EXDATE]> - renew a domain (1 year by default). If you do not provide the C<EXDATE> argument, pepper will perform an C<E<lt>infoE<gt>> command to get it from the server.
 
-=item C<transfer PARAMS> - object transfer management See L<Object Transfers> for more information.
+=item * C<transfer PARAMS> - object transfer management See L<Object Transfers> for more information.
 
-=item C<delete TYPE ID> - delete an object. C<TYPE> is one of C<domain>, C<host>, or C<contact>.
+=item * C<delete TYPE ID> - delete an object. C<TYPE> is one of C<domain>, C<host>, or C<contact>.
 
-=item C<restore DOMAIN> - submit an RGP restore request for a domain.
+=item * C<restore DOMAIN> - submit an RGP restore request for a domain.
 
 =back
 
@@ -1440,11 +1452,11 @@ For contact objects, C<PARAMS> can be the contact's authInfo.
 
 =over
 
-=item C<send FILE> - send the contents of C<FILE>.
+=item * C<send FILE> - send the contents of C<FILE>.
 
-=item C<BEGIN> - begin inputting a frame to send to the server, end with "C<END>".
+=item * C<BEGIN> - begin inputting a frame to send to the server, end with "C<END>".
 
-=item C<edit> - Invoke C<$EDITOR> and send the resulting file.
+=item * C<edit> - Invoke C<$EDITOR> and send the resulting file.
 
 =back
 
@@ -1486,19 +1498,19 @@ This command creates a domain according to the parameters specified after the do
 
 =over
 
-=item C<period> - the registration period. Defaults to 1 year.
+=item * C<period> - the registration period. Defaults to 1 year.
 
-=item C<registrant> - the registrant.
+=item * C<registrant> - the registrant.
 
-=item C<admin> - the admin contact.
+=item * C<admin> - the admin contact.
 
-=item C<tech> - the tech contact.
+=item * C<tech> - the tech contact.
 
-=item C<billing> - the billing contact.
+=item * C<billing> - the billing contact.
 
-=item C<ns> - add a nameserver.
+=item * C<ns> - add a nameserver.
 
-=item C<authInfo> - authInfo code. A random string will be used if not provided.
+=item * C<authInfo> - authInfo code. A random string will be used if not provided.
 
 =back
 
@@ -1529,31 +1541,31 @@ This command creates a contact object according to the parameters specified. C<P
 
 =over
 
-=item C<id> - contact ID. If not provided, a random 16-charater ID will be generated
+=item * C<id> - contact ID. If not provided, a random 16-charater ID will be generated
 
-=item C<type> - specify the "type" attribute for the postal address information. Only one type is supported. Possible values are "int" (default) and "loc".
+=item * C<type> - specify the "type" attribute for the postal address information. Only one type is supported. Possible values are "int" (default) and "loc".
 
-=item C<name> - contact name
+=item * C<name> - contact name
 
-=item C<org> - contact organisation
+=item * C<org> - contact organisation
 
-=item C<street> - street address, may be provided multiple times
+=item * C<street> - street address, may be provided multiple times
 
-=item C<city> - city
+=item * C<city> - city
 
-=item C<sp> - state/province
+=item * C<sp> - state/province
 
-=item C<pc> - postcode
+=item * C<pc> - postcode
 
-=item C<cc> - ISO-3166-alpha2 country code
+=item * C<cc> - ISO-3166-alpha2 country code
 
-=item C<voice> - E164 voice number
+=item * C<voice> - E164 voice number
 
-=item C<fax> - E164 fax number
+=item * C<fax> - E164 fax number
 
-=item C<email> - email address
+=item * C<email> - email address
 
-=item C<authinfo> - authInfo code. A random string will be used if not provided.
+=item * C<authinfo> - authInfo code. A random string will be used if not provided.
 
 =back
 
@@ -1627,17 +1639,30 @@ where:
 
 =over
 
-=item C<TYPE> - C<domain> or C<contact>
+=item * C<TYPE> - C<domain> or C<contact>
 
-=item C<OBJECT> - domain name or contact ID
+=item * C<OBJECT> - domain name or contact ID
 
-=item C<CMD> - one of (C<request>, C<query>, C<approve>, C<reject>, or C<cancel>)
+=item * C<CMD> - one of (C<request>, C<query>, C<approve>, C<reject>, or C<cancel>)
 
-=item C<AUTHINFO> - authInfo code (used with C<request> only)
+=item * C<AUTHINFO> - authInfo code (used with C<request> only)
 
-=item C<PERIOD> - additional validity period (used with domain C<request> only)
+=item * C<PERIOD> - additional validity period (used with domain C<request> only)
 
 =back
+
+=head2 Errors
+
+If you prefix a command with a C<!> character, then Pepper will end the session if an EPP command fails (that is, if the result code of the response is 2000 or higher).
+
+This is mostly useful in scripting mode where you may want the script to terminate if an error occurs.
+
+Example usage:
+
+    !create domain example.com authinfo foo2bar
+    update domain example.com add ns ns0.example.com
+
+In the above example, Pepper will end the session if the first command fails, since there is no point in running the second command if the first has failed.
 
 =head1 INSTALLATION
 
@@ -1645,19 +1670,19 @@ Pepper uses these modules:
 
 =over
 
-=item L<Term::ANSIColor> (version 2.01 or higher)
+=item * L<Term::ANSIColor> (version 2.01 or higher)
 
-=item L<Term::ReadLine::Gnu> (and L<Term::ReadLine>)
+=item * L<Net::EPP::Simple> (from L<Net::EPP>, which in turn uses L<IO::Socket::SSL> and L<XML::LibXML>). Pepper usually requires the most recent "unstable" version which can be obtained from L<https://gitlab.centralnic.com/centralnic/perl-net-epp>.
 
-=item L<Net::EPP::Simple> (from L<Net::EPP>, which in turn uses L<IO::Socket::SSL> and L<XML::LibXML>). Pepper usually requires the most recent "unstable" version which can be obtained from L<https://gitlab.centralnic.com/centralnic/perl-net-epp>.
+=item * L<Text::ParseWords>
 
-=item L<Text::ParseWords>
-
-=item L<Mozilla::CA>
+=item * L<Mozilla::CA>
 
 =back
 
-They can be installed using one of the various CPAN clients, or as packages from your operating system vendor.
+If L<Term::ReadLine::Gnu> is available, then Pepper can provide a richer interactive command line, with support for history and rich command editing.
+
+These modules can be installed using one of the various CPAN clients, or as packages from your operating system vendor.
 
 =head1 LICENSE
 
