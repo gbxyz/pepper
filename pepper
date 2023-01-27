@@ -1302,6 +1302,9 @@ sub fatal {
 
 =pod
 
+=for comment
+To generate the README.md, run pod2markdown pepper | pandoc -f markdown -t markdown -s --toc > README.md
+
 =head1 NAME
 
 Pepper - A command-line EPP client.
@@ -1629,7 +1632,7 @@ Multiple changes can be combined in a single command:
 
 Not currently implemented.
 
-=head2 OBJECT TRANSFERS
+=head2 Object Transfers
 
 Object transfers may be managed with the C<transfer> command. Usage:
 
