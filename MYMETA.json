@@ -4,7 +4,7 @@
       "Gavin Brown <gavin.brown@fastmail.uk>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "ExtUtils::MakeMaker version 7.64, CPAN::Meta::Converter version 2.150010",
+   "generated_by" : "ExtUtils::MakeMaker version 7.34, CPAN::Meta::Converter version 2.150010",
    "license" : [
       "perl_5"
    ],
@@ -36,7 +36,7 @@
             "Getopt::Long" : "0",
             "HTML::Entities" : "0",
             "Mozilla::CA" : "0",
-            "Net::EPP" : "0.23",
+            "Net::EPP" : "0.24",
             "Pod::Usage" : "0",
             "Term::ANSIColor" : "0",
             "Term::ReadLine" : "0",
@@ -58,5 +58,5 @@
       }
    },
    "version" : "v0.99.0",
-   "x_serialization_backend" : "JSON::PP version 4.07"
+   "x_serialization_backend" : "JSON::PP version 4.02"
 }
