@@ -1201,9 +1201,9 @@ Pepper supports two usage modes:
 
 =over
 
-=item 1. Interactive mode: this is the default mode. Pepper will provide a command prompt (with history and line editing capabilities) allowing you to input commands manually.
+=item 1 Interactive mode: this is the default mode. Pepper will provide a command prompt (with history and line editing capabilities) allowing you to input commands manually.
 
-=item 2. Script mode: if Pepper's C<STDIN> is fed a stream of text (ie it's not attached to a terminal) then commands will be read from C<STDIN> and executed sequentially. Pepper will exit once EOF is reached.
+=item 2 Script mode: if Pepper's C<STDIN> is fed a stream of text (ie it's not attached to a terminal) then commands will be read from C<STDIN> and executed sequentially. Pepper will exit once EOF is reached.
 
 =back
 
