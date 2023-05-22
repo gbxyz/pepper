@@ -1,9 +1,0 @@
-Dockerfile
-lib/App/pepper.pm
-lib/App/pepper/EPPClient.pm
-lib/App/pepper/Highlighter.pm
-Makefile.PL
-MANIFEST			This list of files
-none/App::pepper.3pm
-pepper
-README.md
