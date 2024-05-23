@@ -1524,7 +1524,7 @@ If L<Term::ReadLine::Gnu> is available, then Pepper can provide a richer interac
 The L<git repository|https://github.com/gbxyz/pepper> contains a C<Dockerfile>
 that can be used to build an image on your local system.
 
-Alternatively, you can pull the L<image from Docker Hub|https://hub.docker.com/repository/docker/gbxyz/pepper/general>:
+Alternatively, you can pull the L<image from Docker Hub|https://hub.docker.com/r/gbxyz/pepper>:
 
 	$ docker pull gbxyz/pepper
 

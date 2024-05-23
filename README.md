@@ -280,7 +280,7 @@ If [Term::ReadLine::Gnu](https://metacpan.org/pod/Term%3A%3AReadLine%3A%3AGnu) i
 The [git repository](https://github.com/gbxyz/pepper) contains a `Dockerfile`
 that can be used to build an image on your local system.
 
-Alternatively, you can pull the [image from Docker Hub](https://hub.docker.com/repository/docker/gbxyz/pepper/general):
+Alternatively, you can pull the [image from Docker Hub](https://hub.docker.com/r/gbxyz/pepper):
 
         $ docker pull gbxyz/pepper
 
