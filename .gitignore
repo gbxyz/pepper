@@ -6,4 +6,5 @@ MYMETA.*
 META.*
 MANIFEST
 MANIFEST.old
-
+.env
+.secrets
