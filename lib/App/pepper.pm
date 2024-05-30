@@ -5,6 +5,7 @@ use File::Temp qw(tmpnam);
 use Getopt::Long;
 use Mozilla::CA;
 use Net::EPP::Simple;
+use List::Util qw(none);
 use Pod::Usage;
 use Term::ANSIColor;
 use Term::ReadLine;
