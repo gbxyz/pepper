@@ -713,18 +713,40 @@ sub handle_domain_clone {
 
 sub generate_authinfo {
 	my $length = shift || 16;
-	my $authinfo;
 
-	my @chars = (('a'..'z'), ('A'..'Z'), (0-9), ('!', '#', '$', '%', '&', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=', '>', '?', '[', ']', '^', '_', '{', '|', '}', '~'));
-	my $c = scalar(@chars);
+    my $safe = shift;
 
-	$authinfo .= $chars[int($c * rand())-1] while (length($authinfo) < $length);
+    my @upper_alpha = ('A'..'Z');
+    my @lower_alpha = ('a'..'z');
+    my @digits = (0..9);
+    my @symbols = ('!', '#', '$', '%', '&', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=', '>', '?', '[', ']', '^', '_', '{', '|', '}', '~');
 
-	return $authinfo;
+    my (@chars, @authinfo);
+    if ($safe) {
+    	@chars = (@upper_alpha, @digits);
+
+    	@authinfo =  (
+            $upper_alpha[int(scalar(@upper_alpha) * rand())-1],
+            $digits[int(scalar(@digits) * rand())-1],
+        );
+    } else {
+    	@chars = (@upper_alpha, @lower_alpha, @digits, @symbols);
+
+    	@authinfo =  (
+            $upper_alpha[int(scalar(@upper_alpha) * rand())-1],
+            $lower_alpha[int(scalar(@lower_alpha) * rand())-1],
+            $digits[int(scalar(@digits) * rand())-1],
+            $symbols[int(scalar(@symbols) * rand())-1]
+        );
+    }
+
+	push(@authinfo, $chars[int(scalar(@chars) * rand())-1]) while (scalar(@authinfo) < $length);
+
+	return join('', @authinfo);
 }
 
 sub generate_contact_id {
-	return lc(generate_authinfo(16));
+	return generate_authinfo(16, 1);
 }
 
 sub handle_delete {
@@ -1420,7 +1442,7 @@ This command creates a contact object according to the parameters specified. C<P
 Example:
 
     pepper (id@host)> create contact id "sh8013" name "John Doe" org "Example Inc." type int street "123 Example Dr." city Dulles sp VA pc 20166-6503 cc US voice +1.7035555555 email jdoe@example.com
-    
+
 =head2 Object Updates
 
 Objects may be updated using the C<update> command.
