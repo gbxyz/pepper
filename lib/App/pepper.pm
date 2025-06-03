@@ -1559,6 +1559,7 @@ Alternatively, you can pull the L<image from Docker Hub|https://hub.docker.com/r
 =head1 LICENSE
 
 Copyright 2014 - 2023 CentralNic Group plc.
+Copyright 2023 - 2025 Gavin Brown.
 
 This program is Free Software; you can use it and/or modify it under the same terms as Perl itself.
 
