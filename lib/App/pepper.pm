@@ -17,7 +17,7 @@ use constant {
 };
 use vars qw($VERSION);
 
-our $VERSION = '0.99.0';
+our $VERSION = '0.99.1';
 
 my $opt = {
 	'port'		=> 700,
