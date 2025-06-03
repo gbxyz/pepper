@@ -12,6 +12,9 @@ use Term::ReadLine;
 use Text::ParseWords;
 use XML::LibXML;
 use strict;
+use constant {
+    SECURE_AUTHINFO_XMLNS => 'urn:ietf:params:xml:ns:epp:secure-authinfo-transfer-1.0',
+};
 use vars qw($VERSION);
 
 our $VERSION = '0.99.0';
@@ -694,7 +697,7 @@ sub handle_contact_clone {
 	my $info = $epp->contact_info($old) || return;
 
 	$info->{'id'} = $new;
-	$info->{'authInfo'} = generate_authinfo();
+	$info->{'authInfo'} = $epp->server_has_extension(SECURE_AUTHINFO_XMLNS) ? '' : generate_authinfo();
 
 	return $epp->create_contact($info);
 }
@@ -706,7 +709,7 @@ sub handle_domain_clone {
 
 	$info->{'period'} = 1;
 	$info->{'name'} = $new;
-	$info->{'authInfo'} = generate_authinfo();
+	$info->{'authInfo'} = $epp->server_has_extension(SECURE_AUTHINFO_XMLNS) ? '' : generate_authinfo();
 
 	return $epp->create_domain($info);
 }
@@ -863,7 +866,7 @@ sub create_domain {
 	}
 
 	$domain->{'period'} = 1 if ($domain->{'period'} < 1);
-	$domain->{'authInfo'} = generate_authinfo() if (length($domain->{'authInfo'}) < 1);
+	$domain->{'authInfo'} = $epp->server_has_extension(SECURE_AUTHINFO_XMLNS) ? '' : generate_authinfo() if (length($domain->{'authInfo'}) < 1);
 
 	return $epp->create_domain($domain);
 }
@@ -911,7 +914,7 @@ sub create_contact {
 
 	$contact->{'postalInfo'}->{$type} = $postalInfo;
 	$contact->{'id'} = generate_contact_id() if (length($contact->{'id'}) < 1);
-	$contact->{'authInfo'} = generate_authinfo() if (length($contact->{'authInfo'}) < 1);
+	$contact->{'authInfo'} = $epp->server_has_extension(SECURE_AUTHINFO_XMLNS) ? '' : generate_authinfo() if (length($contact->{'authInfo'}) < 1);
 
 	return $epp->create_contact($contact);
 }
