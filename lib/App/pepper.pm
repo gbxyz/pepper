@@ -851,7 +851,7 @@ sub create_domain {
 			$domain->{'registrant'} = $value;
 
 		} elsif ($name eq 'ns') {
-			push(@{$domain->{'ns'}}, $value);
+			push(@{$domain->{'ns'}}, $epp->server_has_object(Net::EPP::Frame::ObjectSpec->xmlns('host')) ? $value : { name => $value});
 
 		} elsif (lc($name) eq 'authinfo') {
 			$domain->{'authInfo'} = $value;
@@ -1040,10 +1040,10 @@ sub domain_update {
 	foreach my $change (@{$changes->{'ns'}}) {
 		my ($action, $value) = @{$change};
 		if ($action eq 'add') {
-			$frame->addNS($value);
+			$frame->addNS($epp->server_has_object(Net::EPP::Frame::ObjectSpec->xmlns('host')) ? $value : { name => $value});
 
 		} else {
-			$frame->remNS($value);
+			$frame->remNS($epp->server_has_object(Net::EPP::Frame::ObjectSpec->xmlns('host')) ? $value : { name => $value});
 
 		}
 	}
