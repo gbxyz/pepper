@@ -182,7 +182,6 @@ This command creates a contact object according to the parameters specified. `PA
 Example:
 
     pepper (id@host)> create contact id "sh8013" name "John Doe" org "Example Inc." type int street "123 Example Dr." city Dulles sp VA pc 20166-6503 cc US voice +1.7035555555 email jdoe@example.com
-    
 
 ## Object Updates
 
@@ -289,5 +288,6 @@ Alternatively, you can pull the [image from Docker Hub](https://hub.docker.com/r
 # LICENSE
 
 Copyright 2014 - 2023 CentralNic Group plc.
+Copyright 2023 - 2025 Gavin Brown.
 
 This program is Free Software; you can use it and/or modify it under the same terms as Perl itself.
