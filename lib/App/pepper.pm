@@ -17,12 +17,12 @@ use constant {
 };
 use vars qw($VERSION);
 
-our $VERSION = '0.99.1';
+our $VERSION = '1.0.0';
 
 my $opt = {
-    'port'        => 700,
-    'timeout'    => 3,
-    'lang'        => 'en',
+    'port'      => 700,
+    'timeout'   => 3,
+    'lang'      => 'en',
 };
 
 my $result = GetOptions($opt,
